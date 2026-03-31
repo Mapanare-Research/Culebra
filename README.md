@@ -1,15 +1,37 @@
+<div align="center">
+
 # Culebra
 
-Compiler diagnostics for self-hosting languages that target LLVM. One binary, no dependencies, catches ABI mismatches, IR bugs, binary corruption, and bootstrap divergence before they become mysteries.
+**/koo-LEH-brah/**
 
-[![Rust](https://img.shields.io/badge/Built%20with-Rust-dea584?logo=rust&logoColor=white)](https://www.rust-lang.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![LLVM](https://img.shields.io/badge/Targets-LLVM%20IR-262D3A?logo=llvm&logoColor=white)](https://llvm.org/)
-[![Born from Mapanare](https://img.shields.io/badge/Born%20from-Mapanare-8B4513)](https://github.com/Mapanare-Research)
+**Compiler diagnostics for self-hosting languages that target LLVM.**
+
+*ABI. IR. Binary. Bootstrap. One binary catches what no debugger will.*
+
+Born from [Mapanare](https://github.com/Mapanare-Research/Mapanare)'s bootstrap, where every bug was a mystery with no safety net. Culebra ships a Nuclei-style template engine so every compiler bug you survive becomes a pattern nobody else has to debug.
+
+English | [Espanol](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [Portugues](docs/README.pt.md)
+
+<br>
+
+![Rust](https://img.shields.io/badge/Rust-2021_Edition-dea584?style=for-the-badge&logo=rust&logoColor=white)
+![LLVM](https://img.shields.io/badge/LLVM-IR_Analysis-262D3A?style=for-the-badge&logo=llvm&logoColor=white)
+![Platform](https://img.shields.io/badge/Linux%20%7C%20macOS%20%7C%20Windows-grey?style=for-the-badge)
+
+[![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
+[![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=flat-square)](Cargo.toml)
+[![Templates](https://img.shields.io/badge/templates-17_shipped-orange.svg?style=flat-square)]()
+[![GitHub Stars](https://img.shields.io/github/stars/Mapanare-Research/Culebra?style=flat-square&color=f5c542)](https://github.com/Mapanare-Research/Culebra/stargazers)
+
+<br>
+
+[Why Culebra?](#why-culebra) · [Install](#install) · [Quick Start](#quick-start) · [Template Engine](#template-engine) · [All Commands](#all-commands) · [Shipped Templates](#shipped-templates) · [Configuration](#configuration-culebratoml) · [Architecture](#architecture) · [Full Docs](docs.md) · [Contributing](#contributing)
+
+</div>
 
 ---
 
-## Why this exists
+## Why Culebra?
 
 Most languages bootstrapped on top of a mature compiler:
 
@@ -17,7 +39,7 @@ Most languages bootstrapped on top of a mature compiler:
 - **Go** was written in C until v1.5, then used an automated C-to-Go translator.
 - **C++** bootstrapped through Cfront, which translated C++ to C and let C compilers handle code generation.
 
-[Mapanare](https://github.com/Mapanare-Research) doesn't have that luxury. It's an AI-native compiled language targeting LLVM IR, building its own backend from scratch: lexer, AST, type inference, LLVM IR emission. The bootstrap compiler (Stage 0) is written in Python, but there's no mature compiler underneath to fall back on.
+[Mapanare](https://github.com/Mapanare-Research/Mapanare) doesn't have that luxury. It's an AI-native compiled language targeting LLVM IR, building its own backend from scratch: lexer, AST, type inference, LLVM IR emission. The bootstrap compiler (Stage 0) is written in Python, but there's no mature compiler underneath to fall back on.
 
 That means every ABI mismatch, every string byte-count error, every struct layout divergence between IR and C, every bootstrap stage regression hits directly with no safety net.
 
@@ -25,27 +47,27 @@ That means every ABI mismatch, every string byte-count error, every struct layou
 
 It exists because Mapanare needed it to survive its own bootstrap. It turns out every compiler project that targets LLVM needs the same thing, but nobody packaged it before.
 
+We didn't just build a linter. We built a pattern engine. Every compiler bug we survived became a template so nobody else has to.
+
 > The name: *Mapanare* is a Venezuelan pit viper. *Culebra* is the common snake. Same family, different role. Mapanare is the language, Culebra is the utility tool any compiler developer can pick up.
 
 ---
 
-## En español
+## Install
 
-Culebra es una herramienta de diagnóstico para compiladores que generan LLVM IR. Nació del proyecto Mapanare, un lenguaje de programación compilado creado en Venezuela. Si estás construyendo un lenguaje, auto-hospedando un compilador, o peleando con ABI y convenciones de llamada, Culebra te ayuda a encontrar los bugs que nadie más detecta.
-
-🇻🇪 *Hecho con orgullo venezolano*
-
----
-
-## Quick Start
-
-### Install
+### Linux / macOS
 
 ```bash
 cargo install --git https://github.com/Mapanare-Research/Culebra
 ```
 
-Or build from source:
+### Windows
+
+```powershell
+cargo install --git https://github.com/Mapanare-Research/Culebra
+```
+
+### From source
 
 ```bash
 git clone https://github.com/Mapanare-Research/Culebra.git
@@ -54,61 +76,93 @@ cargo build --release
 # Binary at target/release/culebra
 ```
 
-### Real workflow
+Verify:
+
+```bash
+culebra --version
+```
+
+---
+
+## Quick Start
 
 You just emitted `stage2.ll` from your compiler and something is wrong at runtime. Here's how you hunt it down:
 
 ```bash
-# 1. Is the IR even valid?
+# 1. Scan for all known bug patterns at once
+culebra scan stage2.ll
+
+# 2. Focus on critical ABI bugs only
+culebra scan stage2.ll --tags abi --severity critical
+
+# 3. Auto-fix what can be fixed
+culebra scan stage2.ll --autofix --dry-run   # preview
+culebra scan stage2.ll --autofix             # apply
+
+# 4. Is the IR even valid?
 culebra check stage2.ll
 
-# 2. Are string constants correct? (catches byte-count mismatches from escape sequences)
+# 5. Are string constants correct?
 culebra strings stage2.ll
 
-# 3. Any known pathologies? (empty switch, ret mismatch, alloca aliasing)
+# 6. Any known pathologies?
 culebra audit stage2.ll
 
-# 4. ABI problems? (sret/byref misuse, large structs returned by value)
-culebra abi stage2.ll
-
-# 5. What changed between stage1 and stage2?
+# 7. What changed between stage1 and stage2?
 culebra diff stage1.ll stage2.ll
 
-# 6. Drill into one function
+# 8. Drill into one function
 culebra extract stage2.ll my_broken_function
 
-# 7. Inspect the compiled binary's .rodata for off-by-1 string pointers
+# 9. Cross-reference struct layouts against C runtime
+culebra abi stage2.ll --header runtime/mapanare_core.c
+
+# 10. Inspect the compiled binary's .rodata
 culebra binary ./my_compiler --ir stage2.ll --find "hello world"
 
-# 8. Run the full pipeline end-to-end
+# 11. Run the full pipeline end-to-end
 culebra pipeline
 ```
 
 ---
 
-## Why Culebra?
+## Real bugs Culebra catches
 
-These are real bugs that Culebra catches. Every one of them has wasted hours of debugging time in real compiler development.
+These are real bugs from Mapanare's bootstrap. Every one wasted hours of debugging.
+
+### Unaligned string constant (the bootstrap killer)
+
+String constants without `align 2` land at odd addresses. Pointer tagging shifts the pointer by -1 byte. Every string comparison fails silently. Tokenizer produces 0 tokens. Compiler outputs empty IR. No crash, no error.
+
+```bash
+$ culebra scan stage2.ll --id unaligned-string-constant
+CRITICAL [unaligned-string-constant] String constant missing alignment -- stage2.ll:47
+  @.str.0 is a 6-byte string constant without alignment.
+  If your runtime uses pointer bit-tagging, this constant's
+  pointer will be silently shifted by -1 byte.
+  fix: Add ', align 2' to all [N x i8] constant declarations
+```
 
 ### String byte-count mismatch
 
-Your escape-sequence handler emits `\n` as two bytes instead of one but the `[N x i8]` type says `N`. The IR assembles, the binary links, and the string silently contains garbage at the end.
+Your escape-sequence handler emits `\n` as two bytes instead of one but the `[N x i8]` type says `N`. The IR assembles, the binary links, and the string silently contains garbage.
 
 ```bash
 $ culebra strings stage2.ll
 ERROR: @.str.47 declared [14 x i8] but content is 13 bytes
-  → c"Hello, world!\00"
+  -> c"Hello, world!\00"
   Fix: change to [13 x i8]
 ```
 
-### PHI fix script deleting all functions
+### List push without writeback (alias analysis trap)
 
-You wrote a Python script to fix broken PHI nodes. It works on small files. On your full compiler IR, it silently outputs an empty module.
+Pushing to a list via GEP directly into a struct field. LLVM caches the pre-push struct state. The mutation is lost. Stage 1 works, stage 2 accumulates 0 lines.
 
 ```bash
-$ culebra phi-check stage2.ll --fix-cmd "python3 scripts/fix_phis.py -"
-ERROR: transform deleted 47 of 47 functions
-  → Input had 47 functions, output has 0
+$ culebra scan stage2.ll --id direct-push-no-writeback
+HIGH [direct-push-no-writeback] List push without temp writeback -- stage2.ll:142 (in emit_line)
+  List push at struct field 2 goes directly through GEP without
+  temp alloca + writeback. LLVM may optimize away the mutation at -O1+.
 ```
 
 ### ABI struct layout mismatch
@@ -116,9 +170,9 @@ ERROR: transform deleted 47 of 47 functions
 Your IR passes a struct by value. The C runtime expects it via `sret` pointer. It compiles, links, and segfaults at runtime.
 
 ```bash
-$ culebra abi stage2.ll
+$ culebra abi stage2.ll --header runtime/mapanare_core.c
 WARNING: @create_string returns {i8*, i64} (16 bytes) by value
-  → Consider sret for structs > 8 bytes on x86_64
+  -> Consider sret for structs > 8 bytes on x86_64
 ```
 
 ### Bootstrap stage divergence
@@ -128,19 +182,166 @@ Stage 2 and Stage 3 should produce identical output (fixed-point). They don't, a
 ```bash
 $ culebra diff stage2.ll stage3.ll
 DIVERGED: 3 functions differ
-  → @emit_call: 47 vs 52 instructions
-  → @type_check: register allocation differs
-  → @codegen_if: missing branch in stage3
+  -> @emit_call: 47 vs 52 instructions
+  -> @type_check: register allocation differs
+  -> @codegen_if: missing branch in stage3
 ```
+
+---
+
+## Template Engine
+
+Culebra ships a Nuclei-style pattern engine. Bug patterns are YAML templates. The Rust binary is the engine. The templates are the knowledge base.
+
+Every template in the initial pack comes from a real bug hit during Mapanare's bootstrap. Not hypothetical patterns -- documented battlefield scars with commit references, impact descriptions, and proven remediations.
+
+### Scan
+
+```bash
+# Run all templates
+culebra scan file.ll
+
+# Filter by tag, severity, or specific template
+culebra scan file.ll --tags abi,string
+culebra scan file.ll --severity critical,high
+culebra scan file.ll --id unaligned-string-constant
+
+# Cross-file ABI check
+culebra scan file.ll --header runtime.c
+
+# Auto-fix
+culebra scan file.ll --autofix --dry-run
+culebra scan file.ll --autofix
+
+# Custom template
+culebra scan file.ll --template ./my-check.yaml
+
+# Output formats
+culebra scan file.ll --format json
+culebra scan file.ll --format sarif     # GitHub Code Scanning
+culebra scan file.ll --format markdown  # CI reports
+```
+
+### Browse templates
+
+```bash
+culebra templates list
+culebra templates list --tags abi
+culebra templates show unaligned-string-constant
+```
+
+### Run workflows
+
+Workflows chain templates with stop conditions for multi-step validation:
+
+```bash
+culebra workflow bootstrap-health-check \
+  --input stage1_output=stage1.ll
+
+culebra workflow pre-commit \
+  --input ir_file=main.ll
+
+culebra workflow ci-full \
+  --input ir_file=main.ll --format sarif
+```
+
+### Write your own templates
+
+Templates are YAML files in `culebra-templates/`. A minimal example:
+
+```yaml
+id: my-custom-check
+info:
+  name: My custom check
+  severity: high
+  author: yourname
+  description: Catches a specific bug pattern.
+  tags:
+    - ir
+    - custom
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: pattern_name
+      pattern:
+        - 'some regex pattern'
+  condition: or
+
+remediation:
+  suggestion: "How to fix this"
+```
+
+Anyone building a language targeting LLVM can open a PR adding their own bug template. The engine never changes, the knowledge base grows. Same model that made Nuclei dominant in security scanning.
+
+See [docs.md](docs.md) for the full template specification, matcher types (regex, sequence, cross-reference, byte scanner), extractors, autofix, and workflow definitions.
+
+---
+
+## Shipped Templates
+
+17 templates across 4 categories, every one from a real Mapanare bug.
+
+| Category | ID | Severity | What it catches |
+|---|---|---|---|
+| **ABI** | `unaligned-string-constant` | Critical | String constants at odd addresses corrupt pointer tagging |
+| **ABI** | `struct-layout-mismatch` | Critical | IR struct vs C header field count/type divergence |
+| **ABI** | `direct-push-no-writeback` | High | List push through GEP without temp alloca writeback |
+| **ABI** | `sret-input-output-alias` | High | sret pointer aliasing input corrupts data mid-computation |
+| **ABI** | `tagged-pointer-odd-address` | High | Odd-sized constants without alignment break pointer tagging |
+| **ABI** | `missing-byval-large-struct` | Medium | Large structs passed as bare ptr without byval |
+| **IR** | `empty-switch-body` | Critical | Switch with 0 cases -- match arms not generated |
+| **IR** | `ret-type-mismatch` | Critical | Return type doesn't match function signature |
+| **IR** | `byte-count-mismatch` | High | `[N x i8]` declared size vs actual content differs |
+| **IR** | `phi-predecessor-mismatch` | High | PHI node references non-existent predecessor block |
+| **IR** | `raw-control-byte-in-constant` | Medium | Raw control bytes in c"..." break line-based tooling |
+| **IR** | `unreachable-after-branch` | Medium | Instructions after terminator (dead code) |
+| **Binary** | `missing-symbol` | Critical | Runtime symbol missing from binary symbol table |
+| **Binary** | `odd-address-rodata` | High | String at odd address in .rodata section |
+| **Bootstrap** | `function-count-drop` | Critical | Stage N+1 has fewer functions than Stage N |
+| **Bootstrap** | `stage-output-divergence` | High | Stage output doesn't converge toward fixed-point |
+| **Bootstrap** | `fixed-point-delta` | High | Compiler output doesn't stabilize after N iterations |
+
+3 shipped workflows: `bootstrap-health-check`, `pre-commit`, `ci-full`.
+
+---
+
+## All Commands
+
+| Command | What it does |
+|---|---|
+| `culebra scan file.ll` | Scan IR with YAML pattern templates. `--tags`, `--severity`, `--id`, `--format`, `--autofix`. |
+| `culebra templates list` | List all available scan templates with severity and tags. |
+| `culebra templates show <id>` | Show full details of a template: description, impact, remediation, CWE. |
+| `culebra workflow <id>` | Run a multi-step scan workflow with stop conditions. |
+| `culebra strings file.ll` | Validate `[N x i8] c"..."` byte counts. Catches escape-sequence miscounting. |
+| `culebra audit file.ll` | Detect IR pathologies: empty switch, ret mismatch, missing `%`, duplicate case. |
+| `culebra check file.ll` | Validate IR with `llvm-as`. |
+| `culebra phi-check file.ll` | Validate transform scripts preserve IR structure. |
+| `culebra diff a.ll b.ll` | Per-function structural diff, register-normalized. |
+| `culebra extract file.ll fn` | Extract a single function from a massive IR file. |
+| `culebra table file.ll` | Per-function metrics table (instructions, allocas, calls, etc.). |
+| `culebra abi file.ll` | Detect sret/byref misuse, struct layout validation, C header cross-ref. |
+| `culebra binary ./binary` | ELF/PE inspection, .rodata analysis, IR cross-referencing. |
+| `culebra run compiler source` | Compile, run, check expected output. |
+| `culebra test` | Run all `[[tests]]` from `culebra.toml`. |
+| `culebra watch` | Watch files, re-run a command on change. |
+| `culebra pipeline` | Run full stage pipeline end-to-end via `culebra.toml`. |
+| `culebra fixedpoint compiler source` | Detect fixed-point convergence in self-hosting compilers. |
+| `culebra status` | Show bootstrap self-hosting progress. |
+| `culebra init` | Generate a `culebra.toml` template. |
 
 ---
 
 ## Layers
 
-Culebra organizes diagnostics into layers, from low-level IR analysis up to full bootstrap orchestration:
-
 | Layer | Commands | What it covers |
 |---|---|---|
+| **Scan** | `scan`, `templates`, `workflow` | Template-driven pattern matching, autofix, SARIF output |
 | **IR** | `strings`, `audit`, `check`, `diff`, `extract`, `table` | Byte-level IR validation, pathology detection, structural comparison |
 | **ABI** | `abi` | Calling convention mismatches, sret/byref analysis, struct layout |
 | **Binary** | `binary` | ELF/PE inspection, .rodata cross-referencing against IR |
@@ -151,53 +352,93 @@ Culebra organizes diagnostics into layers, from low-level IR analysis up to full
 
 ---
 
-## All Commands
+## Architecture
 
-| Command | What it does |
-|---|---|
-| `culebra strings file.ll` | Validates every `[N x i8] c"..."` constant. Catches byte-count mismatches from escape-sequence miscounting. |
-| `culebra audit file.ll` | Detects IR pathologies: empty switch, ret mismatch, alloca alias, and more. |
-| `culebra check file.ll` | Runs `llvm-as` validation with structured error output. |
-| `culebra phi-check file.ll` | Validates that transform scripts don't destroy the IR. |
-| `culebra diff a.ll b.ll` | Per-function structural diff, register-normalized. |
-| `culebra extract file.ll fn` | Dumps a single function from a massive IR file. |
-| `culebra table file.ll` | Per-function metrics table (instructions, allocas, calls, etc.). |
-| `culebra abi file.ll` | Detects sret/byref misuse, flags large-return-by-value. |
-| `culebra binary ./binary` | ELF/PE string inspection, .rodata analysis, optional IR cross-referencing. |
-| `culebra run compiler source.mn` | Compiles a source file, runs the binary, checks expected output. |
-| `culebra test` | Runs all `[[tests]]` from `culebra.toml`. Compile, execute, diff output. |
-| `culebra watch` | Watches files and re-runs a command on change. |
-| `culebra pipeline` | Builds and tests a full stage pipeline end-to-end via `culebra.toml`. |
-| `culebra fixedpoint compiler source` | Detects fixed-point: runs stage N output through itself, checks if output stabilizes. |
-| `culebra status` | Shows self-hosting progress from `culebra.toml`. |
-| `culebra init` | Generates a `culebra.toml` template for your project. |
+```
+                        culebra scan file.ll --tags abi
+                                    |
+                    +---------------+---------------+
+                    |                               |
+             Template Loader                   IR Parser
+          (culebra-templates/)               (ir.rs -> IRModule)
+                    |                               |
+             Filter by tags,              Parse functions, globals,
+            severity, id                  string constants, structs
+                    |                               |
+                    +----------- Engine ------------+
+                                    |
+                    +---------------+---------------+
+                    |               |               |
+              Regex Matcher   Sequence Matcher  Cross-Ref Matcher
+             (single-line)   (multi-line with   (IR vs C header)
+                             captures, absence)
+                    |               |               |
+                    +----------- Findings ----------+
+                                    |
+                    +---------------+---------------+
+                    |               |               |
+                  Text           JSON            SARIF
+                (colored)    (structured)    (GitHub Code
+                                             Scanning)
+```
+
+**Template directory resolution:**
+
+1. `./culebra-templates/` (project-local)
+2. `<binary_dir>/culebra-templates/` (next to binary)
+3. `~/.culebra/templates/` (user-global)
+
+**Template directory structure:**
+
+```
+culebra-templates/
+  abi/
+    unaligned-string-constant.yaml
+    direct-push-no-writeback.yaml
+    sret-input-output-alias.yaml
+    missing-byval-large-struct.yaml
+    tagged-pointer-odd-address.yaml
+    struct-layout-mismatch.yaml
+  ir/
+    byte-count-mismatch.yaml
+    empty-switch-body.yaml
+    ret-type-mismatch.yaml
+    raw-control-byte.yaml
+    phi-predecessor-mismatch.yaml
+    unreachable-after-branch.yaml
+  binary/
+    odd-address-rodata.yaml
+    missing-symbol.yaml
+  bootstrap/
+    stage-output-divergence.yaml
+    function-count-drop.yaml
+    fixed-point-delta.yaml
+  workflows/
+    bootstrap-health-check.yaml
+    pre-commit.yaml
+    ci-full.yaml
+```
 
 ---
 
 ## Configuration: `culebra.toml`
 
-Run `culebra init` to generate a starter config. Here's what it looks like:
+Run `culebra init` to generate a starter config:
 
 ```toml
-# Culebra config
-# https://github.com/Mapanare-Research/Culebra
-
 [project]
 name = "my-compiler"
 source_lang = "my-lang"
-target = "llvm"                    # llvm, wasm, native
-compiler = "./my-compiler"         # path to compiler binary (used by `culebra test`)
-runtime = "runtime/my_runtime.c"   # C runtime to link (optional)
-
-# Bootstrap stages.
-# Each stage compiles the next. Fixed-point = stage N output == stage N+1 output.
+target = "llvm"
+compiler = "./my-compiler"
+runtime = "runtime/my_runtime.c"
 
 [[stages]]
 name = "bootstrap"
 cmd = "python bootstrap/compile.py {input}"
 input = "src/compiler.ml"
 output = "/tmp/stage1.ll"
-validate = true         # run llvm-as on output
+validate = true
 
 [[stages]]
 name = "stage1"
@@ -213,7 +454,6 @@ input = "src/compiler.ml"
 output = "/tmp/stage3.ll"
 validate = true
 
-# Runtime tests: `culebra test` compiles each, runs it, checks stdout
 [[tests]]
 name = "hello"
 source = 'fn main() { print("hello") }'
@@ -227,24 +467,39 @@ expect = "5"
 
 ---
 
-## What stays in your project
+## CI/CD Integration
 
-Culebra handles generic LLVM IR analysis, the kind of diagnostics every compiler project needs. It does not try to replace your project-specific tooling.
+### GitHub Actions with SARIF
 
-**Culebra handles:**
-- IR validation and pathology detection
-- ABI and calling convention analysis
-- Binary inspection and string cross-referencing
-- Bootstrap stage orchestration and fixed-point detection
-- Transform script validation
+```yaml
+name: Culebra Scan
+on: [push, pull_request]
 
-**Your project keeps:**
-- Golden test suites specific to your language
-- Custom build scripts and Makefiles
-- Language-specific semantic checks
-- Project-specific CI/CD pipelines
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-Culebra slots into your existing workflow. It reads `.ll` files and `culebra.toml`, it doesn't try to own your build system.
+      - name: Install Culebra
+        run: cargo install --git https://github.com/Mapanare-Research/Culebra
+
+      - name: Run scan
+        run: culebra scan output.ll --format sarif > culebra.sarif
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: culebra.sarif
+```
+
+### Pre-commit hook
+
+```bash
+#!/bin/bash
+culebra scan output.ll --severity critical,high
+```
 
 ---
 
@@ -255,15 +510,33 @@ Culebra slots into your existing workflow. It reads `.ll` files and `culebra.tom
 - Anyone debugging ABI and calling convention issues between IR and native code
 - Anyone running a multi-stage bootstrap and needing to know where divergence starts
 - Anyone who's lost hours to a string byte-count being off by one
+- Anyone who wants their hard-won compiler bugs turned into reusable detection templates
+
+---
+
+## Contributing
+
+Contributions welcome. Two ways to contribute:
+
+1. **Code** -- Rust engine improvements, new matcher types, output formats
+2. **Templates** -- Add YAML templates for compiler bugs you've encountered
+
+Every bug you've hit with your LLVM-targeting compiler can become a template. The tool gets smarter without touching Rust code.
 
 ---
 
 ## License
 
-MIT. See [LICENSE](LICENSE) for details.
+MIT License -- see [LICENSE](LICENSE) for details.
 
 ---
 
-<p align="center">
-  Born from <a href="https://github.com/Mapanare-Research">Mapanare</a>, the language that needed a safety net to survive its own bootstrap.
-</p>
+<div align="center">
+
+**Culebra** -- The safety net your compiler needs.
+
+[Full Documentation](docs.md) · [Report Bug](https://github.com/Mapanare-Research/Culebra/issues) · [Mapanare](https://github.com/Mapanare-Research/Mapanare)
+
+Made with care by [Juan Denis](https://juandenis.com)
+
+</div>
