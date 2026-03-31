@@ -65,6 +65,7 @@ culebra scan playground/fixtures/stage2-tokenize.ll --id return-type-divergence 
 - `stage1-tokenize.ll` — Correct IR from the Python compiler. Full 5-branch tokenizer.
 - `stage2-tokenize.ll` — Broken IR from the self-hosted compiler. ABI + branch-dropping bugs.
 - `stage2-lowerer-bugs.ll` — Option type-pun, internal DCE, dynamic alloca, return fall-through, large struct.
+- `stage2-control-flow-bugs.ll` — PHI type mismatch, break dropped, list element size undercount.
 
 ## Adding your own
 
