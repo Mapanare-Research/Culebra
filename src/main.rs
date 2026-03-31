@@ -95,13 +95,61 @@ enum Commands {
         header: Option<String>,
     },
 
-    /// Inspect string constants and symbols in a compiled binary
+    /// Inspect binary and cross-reference string addresses against IR
     Binary {
         /// Path to ELF/PE binary or .o file
         file: String,
+        /// Path to .ll file for cross-referencing GEP targets
+        #[arg(long)]
+        ir: Option<String>,
         /// Verify a specific string exists at correct address
         #[arg(long)]
         find: Option<String>,
+    },
+
+    /// Compile a .mn program through a compiler, run the binary, check output
+    Run {
+        /// Compiler binary to use
+        compiler: String,
+        /// Source file to compile
+        source: String,
+        /// Expected stdout output (fail if different)
+        #[arg(long)]
+        expect: Option<String>,
+        /// Timeout in seconds
+        #[arg(long, default_value = "30")]
+        timeout: u64,
+        /// Extra flags passed to clang when linking
+        #[arg(long)]
+        clang_flags: Option<String>,
+        /// Path to C runtime to link
+        #[arg(long)]
+        runtime: Option<String>,
+    },
+
+    /// Run all [[tests]] from culebra.toml — compile, execute, diff output
+    Test {
+        /// Culebra project config file
+        #[arg(short, long, default_value = "culebra.toml")]
+        config: String,
+        /// Filter tests by name substring
+        #[arg(long)]
+        filter: Option<String>,
+        /// Timeout per test in seconds
+        #[arg(long, default_value = "30")]
+        timeout: u64,
+    },
+
+    /// Watch files and re-run a command on change
+    Watch {
+        /// Glob patterns to watch (comma-separated)
+        #[arg(short, long, default_value = "*.ll,*.mn")]
+        patterns: String,
+        /// Directory to watch
+        #[arg(short, long, default_value = ".")]
+        dir: String,
+        /// Command to run on change
+        cmd: Vec<String>,
     },
 
     /// Build and test a full stage pipeline end-to-end
@@ -119,6 +167,23 @@ enum Commands {
         /// Culebra project config file
         #[arg(short, long, default_value = "culebra.toml")]
         config: String,
+    },
+
+    /// Detect fixed-point: run stage N output through itself, check if output stabilizes
+    Fixedpoint {
+        /// Compiler binary (stage N)
+        compiler: String,
+        /// Source file to compile (usually the compiler's own source)
+        source: String,
+        /// Max iterations before giving up
+        #[arg(long, default_value = "3")]
+        max_iters: usize,
+        /// Timeout per compilation in seconds
+        #[arg(long, default_value = "120")]
+        timeout: u64,
+        /// Path to C runtime to link
+        #[arg(long)]
+        runtime: Option<String>,
     },
 
     /// Initialize a culebra.toml config for a compiler project
@@ -143,9 +208,39 @@ fn main() {
         Commands::Extract { file, func_name } => commands::extract::run(&file, &func_name),
         Commands::Table { file, top, sort_by } => commands::table::run(&file, top, &sort_by),
         Commands::Abi { file, header } => commands::abi::run(&file, header.as_deref()),
-        Commands::Binary { file, find } => commands::binary::run(&file, find.as_deref()),
+        Commands::Binary { file, ir, find } => {
+            commands::binary::run(&file, ir.as_deref(), find.as_deref())
+        }
+        Commands::Run {
+            compiler,
+            source,
+            expect,
+            timeout,
+            clang_flags,
+            runtime,
+        } => commands::run::run(
+            &compiler,
+            &source,
+            expect.as_deref(),
+            timeout,
+            clang_flags.as_deref(),
+            runtime.as_deref(),
+        ),
+        Commands::Test {
+            config,
+            filter,
+            timeout,
+        } => commands::test::run(&config, filter.as_deref(), timeout),
+        Commands::Watch { patterns, dir, cmd } => commands::watch::run(&patterns, &dir, &cmd),
         Commands::Pipeline { config, timeout } => commands::pipeline::run(&config, timeout),
         Commands::Status { config } => commands::status::run(&config),
+        Commands::Fixedpoint {
+            compiler,
+            source,
+            max_iters,
+            timeout,
+            runtime,
+        } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref()),
         Commands::Init => commands::init::run(),
     };
 

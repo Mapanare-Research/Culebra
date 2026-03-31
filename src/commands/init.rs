@@ -6,7 +6,9 @@ const TEMPLATE: &str = r#"# Culebra — compiler forge config
 [project]
 name = "my-compiler"
 source_lang = "my-lang"
-target = "llvm"         # llvm, wasm, native
+target = "llvm"                    # llvm, wasm, native
+compiler = "./my-compiler"         # path to compiler binary (used by `culebra test`)
+runtime = "runtime/my_runtime.c"   # C runtime to link (optional)
 
 # Define your bootstrap stages.
 # Each stage compiles the next. Fixed-point = stage N output == stage N+1 output.
@@ -32,7 +34,7 @@ input = "src/compiler.ml"
 output = "/tmp/stage3.ll"
 validate = true
 
-# Runtime tests — run compiled binaries and check output
+# Runtime tests — `culebra test` compiles each, runs it, checks stdout
 [[tests]]
 name = "hello"
 source = 'fn main() { print("hello") }'
@@ -42,6 +44,11 @@ expect = "hello"
 name = "math"
 source = "fn main() { print(2 + 3) }"
 expect = "5"
+
+# [[tests]]
+# name = "from_file"
+# source_file = "tests/golden/01_hello.mn"
+# expect = "hello world"
 "#;
 
 pub fn run() -> i32 {
