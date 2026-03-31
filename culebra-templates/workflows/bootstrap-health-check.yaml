@@ -1,0 +1,30 @@
+id: bootstrap-health-check
+info:
+  name: Full bootstrap health check
+  severity: critical
+  description: |
+    Runs all checks relevant to self-hosting compiler bootstrap
+    in sequence: IR validation, string/ABI checks, and bootstrap
+    divergence detection.
+  tags:
+    - bootstrap
+    - workflow
+
+workflow:
+  - templates:
+      tags:
+        - ir
+        - string
+    input: "{stage1_output}"
+    stop_on: critical
+
+  - templates:
+      tags:
+        - abi
+    input: "{stage1_output}"
+    stop_on: critical
+
+  - templates:
+      tags:
+        - bootstrap
+    input: "{stage1_output}"

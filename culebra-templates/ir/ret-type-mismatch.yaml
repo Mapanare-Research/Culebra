@@ -1,0 +1,39 @@
+id: ret-type-mismatch
+info:
+  name: Return type doesn't match function signature
+  severity: critical
+  author: juandenis
+  description: |
+    A ret instruction returns a value whose type doesn't match
+    the function's declared return type. LLVM will reject this
+    during verification, but if you're generating IR before
+    running llvm-as, this is a compiler code-gen bug.
+  impact: |
+    llvm-as will refuse to assemble the IR. If somehow bypassed,
+    the mismatch causes undefined behavior at the ABI level.
+  tags:
+    - ir
+    - type-safety
+  cwe: CWE-843
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: ret_void_in_nonvoid
+      pattern:
+        - '^\s*ret void'
+  condition: or
+
+report:
+  format: |
+    Function returns void but may have a non-void return type.
+    Run 'culebra audit <file>' for precise ret/signature matching.
+
+remediation:
+  suggestion: "Fix compiler's return type emission to match function signature"
+  difficulty: moderate

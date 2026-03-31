@@ -1,0 +1,54 @@
+id: tagged-pointer-odd-address
+info:
+  name: Odd-sized constant may land at odd address
+  severity: high
+  author: juandenis
+  description: |
+    When string constants have odd byte counts and no explicit
+    alignment, LLVM may place them at odd addresses. Runtimes
+    that use pointer tagging (using bit 0 to distinguish types)
+    will misinterpret these pointers.
+  impact: |
+    Pointer tagging systems (mn_untag, NaN boxing, tagged unions)
+    will see bit 0 set and either strip it (shifting the pointer)
+    or misclassify the value as a different type entirely.
+  tags:
+    - abi
+    - string
+    - pointer-tagging
+  cwe: CWE-188
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: globals
+
+match:
+  matchers:
+    - type: regex
+      name: odd_byte_constant
+      pattern:
+        - 'constant \[([13579]\d*|[13579]) x i8\] c"[^"]*"(?!.*align)'
+  condition: or
+
+extractors:
+  - type: regex
+    name: byte_count
+    pattern: '\[(\d+) x i8\]'
+    group: 1
+
+report:
+  format: |
+    String constant with {byte_count} bytes (odd count) and no alignment.
+    May land at odd address, corrupting pointer tag in bit 0.
+
+remediation:
+  suggestion: "Add ', align 2' to ensure even-address placement"
+  autofix:
+    type: line_replace
+    match: '(constant \[\d+ x i8\] c"[^"]*")\s*$'
+    replace: '\1, align 2'
+  difficulty: trivial
+
+related:
+  - unaligned-string-constant

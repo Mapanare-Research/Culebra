@@ -21,6 +21,7 @@ goblin = "0.9"
 memmap2 = "0.9"
 notify = "7"
 sha2 = "0.10"
+serde_yaml = "0.9"
 
 [profile.release]
 lto = true

@@ -1,0 +1,43 @@
+id: raw-control-byte-in-constant
+info:
+  name: Unescaped control byte in string constant
+  severity: medium
+  author: juandenis
+  description: |
+    Raw control bytes (0x01-0x1F) in c"..." constants break
+    line-based tooling and can cause PHI fix scripts to
+    split constants across lines. The null terminator (0x00)
+    is expected, but other control characters should use
+    \xx hex escapes.
+  impact: |
+    Text-processing tools (grep, sed, PHI fixup scripts) may
+    split the constant across lines, corrupt regex matches,
+    or silently drop content. The IR itself is valid, but
+    tooling around it breaks.
+  tags:
+    - ir
+    - string
+    - tooling
+  cwe: CWE-138
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: globals
+
+match:
+  matchers:
+    - type: byte_scan
+      name: raw_control_chars
+      byte_range: [1, 31]
+      exclude: [10]
+  condition: or
+
+report:
+  format: |
+    String constant contains raw control byte(s) (0x01-0x1F).
+    These should be escaped as \xx in the c"..." literal.
+
+remediation:
+  suggestion: "Replace raw control characters with \\xx hex escapes in string constants"
+  difficulty: trivial

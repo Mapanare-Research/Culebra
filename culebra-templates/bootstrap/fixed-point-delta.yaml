@@ -1,0 +1,42 @@
+id: fixed-point-delta
+info:
+  name: Fixed point not reached within max iterations
+  severity: high
+  author: juandenis
+  description: |
+    The compiler's output does not stabilize after N iterations
+    of self-compilation. A healthy self-hosting compiler should
+    reach a fixed point (identical output) within 2-3 iterations.
+    Failure to converge means there's a non-deterministic or
+    self-referential bug in the code generator.
+  impact: |
+    The compiler cannot be trusted to compile itself. Each
+    iteration produces different output, meaning the binary
+    behavior is unstable and unreliable.
+  tags:
+    - bootstrap
+    - fixed-point
+    - convergence
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: any_definition
+      pattern:
+        - '^(define|@[\w.]+ =)'
+  condition: or
+
+report:
+  format: |
+    This template identifies IR content for fixed-point analysis.
+    Run 'culebra fixedpoint <compiler> <source>' to automatically
+    detect whether the compiler's output stabilizes.
+
+remediation:
+  suggestion: "Use 'culebra fixedpoint' to identify which functions prevent convergence, then fix the underlying code-gen bugs"
+  difficulty: complex

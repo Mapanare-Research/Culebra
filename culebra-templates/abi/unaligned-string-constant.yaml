@@ -1,0 +1,66 @@
+id: unaligned-string-constant
+info:
+  name: String constant missing alignment
+  severity: critical
+  author: juandenis
+  description: |
+    String constants without align 2+ can land at odd addresses.
+    Runtimes using pointer tagging (bit 0 masking via mn_untag)
+    will mangle these pointers, causing silent string comparison
+    failures. This was the root cause of Mapanare's stage2 producing
+    zero tokens: every char_at comparison failed because mn_untag
+    shifted the pointer back by 1 byte.
+  impact: |
+    All string comparisons return false. Tokenizer produces 0 tokens.
+    Parser produces 0 definitions. Compiler outputs empty IR.
+    No crash, no error, just silent empty output.
+  tags:
+    - abi
+    - string
+    - bootstrap-killer
+    - silent-failure
+  cwe: CWE-188
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: globals
+
+match:
+  matchers:
+    - type: regex
+      name: constant_without_align
+      pattern:
+        - '@[\w.]+ = (?:private |internal )?(?:unnamed_addr )?constant \[\d+ x i8\] c"[^"]*"\s*$'
+  condition: or
+
+extractors:
+  - type: regex
+    name: constant_name
+    pattern: '(@[\w.]+) = (?:private |internal )?(?:unnamed_addr )?constant'
+    group: 1
+  - type: regex
+    name: byte_size
+    pattern: '\[(\d+) x i8\]'
+    group: 1
+
+report:
+  format: |
+    {constant_name} is a {byte_size}-byte string constant without alignment.
+    If your runtime uses pointer bit-tagging (e.g., mn_untag strips bit 0),
+    this constant's pointer will be silently shifted by -1 byte.
+  evidence:
+    show_line: true
+    show_context: 0
+
+remediation:
+  suggestion: "Add ', align 2' to all [N x i8] constant declarations"
+  autofix:
+    type: line_replace
+    match: '((?:private |internal )?(?:unnamed_addr )?constant \[\d+ x i8\] c"[^"]*")\s*$'
+    replace: '\1, align 2'
+  difficulty: trivial
+
+related:
+  - raw-control-byte-in-constant
+  - tagged-pointer-odd-address

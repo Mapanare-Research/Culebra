@@ -1,0 +1,23 @@
+id: pre-commit
+info:
+  name: Pre-commit IR validation
+  severity: high
+  description: |
+    Quick validation suitable for pre-commit hooks. Checks for
+    critical IR issues and ABI bugs that would break compilation.
+  tags:
+    - ci
+    - workflow
+
+workflow:
+  - templates:
+      tags:
+        - ir
+    input: "{ir_file}"
+    stop_on: critical
+
+  - templates:
+      tags:
+        - abi
+        - string
+    input: "{ir_file}"

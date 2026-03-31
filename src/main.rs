@@ -1,7 +1,9 @@
 mod commands;
 mod ir;
+mod template;
 
 use clap::{Parser, Subcommand};
+use std::collections::HashMap;
 
 #[derive(Parser)]
 #[command(
@@ -188,6 +190,78 @@ enum Commands {
 
     /// Initialize a culebra.toml config for a compiler project
     Init,
+
+    /// Scan IR files with pattern templates (Nuclei-style)
+    Scan {
+        /// Path to .ll file
+        file: String,
+        /// Filter by tags (comma-separated)
+        #[arg(long)]
+        tags: Option<String>,
+        /// Filter by severity (comma-separated: critical,high,medium,low,info)
+        #[arg(long)]
+        severity: Option<String>,
+        /// Run a specific template by ID
+        #[arg(long)]
+        id: Option<String>,
+        /// Path to custom template file or directory
+        #[arg(long)]
+        template: Option<String>,
+        /// Path to C header for cross-reference checks
+        #[arg(long)]
+        header: Option<String>,
+        /// Output format: text, json, sarif, markdown
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Apply auto-fixes
+        #[arg(long)]
+        autofix: bool,
+        /// Show fixes without applying (use with --autofix)
+        #[arg(long)]
+        dry_run: bool,
+    },
+
+    /// List or show available scan templates
+    Templates {
+        #[command(subcommand)]
+        action: TemplatesAction,
+    },
+
+    /// Run a multi-step scan workflow
+    Workflow {
+        /// Workflow ID to run
+        workflow_id: String,
+        /// Input files as key=value pairs (e.g. --input stage1=file.ll)
+        #[arg(long = "input", value_parser = parse_kv)]
+        inputs: Vec<(String, String)>,
+        /// Output format: text, json, sarif, markdown
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum TemplatesAction {
+    /// List all available templates
+    List {
+        /// Filter by tags (comma-separated)
+        #[arg(long)]
+        tags: Option<String>,
+    },
+    /// Show details of a specific template
+    Show {
+        /// Template ID
+        id: String,
+    },
+}
+
+fn parse_kv(s: &str) -> Result<(String, String), String> {
+    let parts: Vec<&str> = s.splitn(2, '=').collect();
+    if parts.len() != 2 {
+        Err(format!("expected key=value, got '{}'", s))
+    } else {
+        Ok((parts[0].to_string(), parts[1].to_string()))
+    }
 }
 
 fn main() {
@@ -242,6 +316,53 @@ fn main() {
             runtime,
         } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref()),
         Commands::Init => commands::init::run(),
+        Commands::Scan {
+            file,
+            tags,
+            severity,
+            id,
+            template,
+            header,
+            format,
+            autofix,
+            dry_run,
+        } => {
+            let tag_list: Vec<String> = tags
+                .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+                .unwrap_or_default();
+            let sev_list: Vec<String> = severity
+                .map(|s| s.split(',').map(|s| s.trim().to_string()).collect())
+                .unwrap_or_default();
+            let id_list: Vec<String> = id.into_iter().collect();
+            commands::scan::run(
+                &file,
+                &tag_list,
+                &sev_list,
+                &id_list,
+                template.as_deref(),
+                header.as_deref(),
+                &format,
+                autofix,
+                dry_run,
+            )
+        }
+        Commands::Templates { action } => match action {
+            TemplatesAction::List { tags } => {
+                let tag_list: Vec<String> = tags
+                    .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+                    .unwrap_or_default();
+                commands::templates_cmd::run_list(&tag_list)
+            }
+            TemplatesAction::Show { id } => commands::templates_cmd::run_show(&id),
+        },
+        Commands::Workflow {
+            workflow_id,
+            inputs,
+            format,
+        } => {
+            let input_map: HashMap<String, String> = inputs.into_iter().collect();
+            commands::workflow::run(&workflow_id, &input_map, &format)
+        }
     };
 
     std::process::exit(exit_code);

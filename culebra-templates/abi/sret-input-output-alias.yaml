@@ -1,0 +1,54 @@
+id: sret-input-output-alias
+info:
+  name: sret output aliasing input struct pointer
+  severity: high
+  author: juandenis
+  description: |
+    When a function uses sret (struct return) and the sret pointer
+    aliases one of the input struct pointers, writes to the return
+    struct can corrupt the input mid-computation. The compiler must
+    ensure sret pointers are distinct from all input pointers, or
+    copy inputs to temporaries first.
+  impact: |
+    Silent data corruption in returned structs. Fields contain
+    partially-written data from the return mixed with stale input
+    data. Often only manifests at optimization levels above -O0.
+  tags:
+    - abi
+    - sret
+    - alias-analysis
+    - silent-failure
+  cwe: CWE-824
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: sret_call
+      pattern: 'call void @[\w.]+\(ptr sret\(.+\) (%[\w.]+), ptr (%[\w.]+)'
+      capture:
+        sret_ptr: 1
+        input_ptr: 2
+
+    - id: same_ptr
+      pattern: 'getelementptr.* ptr %{sret_ptr}'
+      after: sret_call
+      within_lines: 5
+
+  condition: all
+
+report:
+  format: |
+    sret pointer {sret_ptr} may alias input pointer {input_ptr}.
+    If these point to the same memory, writes to the return struct
+    will corrupt the input during computation.
+
+remediation:
+  suggestion: |
+    Ensure sret output pointer is a fresh alloca, not the same
+    as any input parameter. Copy input to temp if needed.
+  difficulty: moderate

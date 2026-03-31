@@ -1,0 +1,45 @@
+id: odd-address-rodata
+info:
+  name: String at odd address in .rodata
+  severity: high
+  author: juandenis
+  description: |
+    A string constant in the compiled binary's .rodata section
+    is placed at an odd virtual address. This is the binary-level
+    manifestation of the unaligned-string-constant IR bug.
+    At runtime, pointer tagging systems will corrupt this address.
+  impact: |
+    Identical to unaligned-string-constant but confirmed at the
+    binary level. The IR may have had alignment, but the linker
+    may have ignored it, or the alignment was missing.
+  tags:
+    - binary
+    - string
+    - pointer-tagging
+  cwe: CWE-188
+  created: "2025-03-28"
+
+scope:
+  file_type: elf-binary
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: odd_address
+      pattern:
+        - 'address 0x[0-9a-f]*[13579bdf]:'
+  condition: or
+
+report:
+  format: |
+    String found at odd virtual address in binary .rodata section.
+    Pointer tagging will corrupt this address at runtime.
+
+remediation:
+  suggestion: "Add align 2 to the corresponding IR string constant and recompile"
+  difficulty: trivial
+
+related:
+  - unaligned-string-constant
+  - tagged-pointer-odd-address

@@ -1,0 +1,44 @@
+id: function-count-drop
+info:
+  name: Stage N+1 has fewer functions than Stage N
+  severity: critical
+  author: juandenis
+  description: |
+    When the compiler compiled by itself produces fewer function
+    definitions than the original, it means some functions are
+    being silently dropped during self-compilation. This is
+    often caused by match/switch emission bugs where the compiler
+    fails to generate code for some of its own constructs.
+  impact: |
+    Missing functions cause link failures or, worse, silent
+    wrong behavior if the missing function had a fallback.
+    In Mapanare, this manifested as stage2 producing 0 functions
+    because the tokenizer's switch had 0 cases.
+  tags:
+    - bootstrap
+    - stage-divergence
+    - silent-failure
+  cwe: CWE-478
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: function_def
+      pattern:
+        - '^define '
+  condition: or
+
+report:
+  format: |
+    Function definition found. Compare function counts between stages
+    using 'culebra diff <stage1.ll> <stage2.ll>' to detect drops.
+    A function count drop between stages is a critical bootstrap bug.
+
+remediation:
+  suggestion: "Run 'culebra diff' between stage outputs and investigate any 'only in A' functions"
+  difficulty: complex

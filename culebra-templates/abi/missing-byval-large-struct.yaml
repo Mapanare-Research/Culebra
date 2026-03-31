@@ -1,0 +1,42 @@
+id: missing-byval-large-struct
+info:
+  name: Large struct passed by pointer without byval
+  severity: medium
+  author: juandenis
+  description: |
+    Structs larger than 2 registers (16 bytes on x86_64) passed
+    as bare ptr arguments without byval attribute. The callee
+    may modify the pointed-to memory, affecting the caller's copy.
+    Without byval, LLVM won't generate a copy, and the ABI contract
+    depends on the callee not writing to the pointer.
+  impact: |
+    Callee mutations to struct parameters silently modify the
+    caller's data. May only surface when optimization inlines
+    the callee or when the caller reads the struct after the call.
+  tags:
+    - abi
+    - struct
+    - calling-convention
+  cwe: CWE-824
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: ptr_without_byval
+      pattern:
+        - 'define .+ @[\w.]+\(.*ptr (?!sret|byval|noalias)(%[\w.]+).*\)'
+  condition: or
+
+report:
+  format: |
+    Function accepts ptr argument without byval attribute.
+    If the struct is large, the callee may corrupt the caller's copy.
+
+remediation:
+  suggestion: "Add byval(<type>) attribute to struct pointer parameters, or copy to local alloca"
+  difficulty: moderate

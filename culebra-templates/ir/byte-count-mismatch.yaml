@@ -1,0 +1,54 @@
+id: byte-count-mismatch
+info:
+  name: String constant declared vs actual byte count mismatch
+  severity: high
+  author: juandenis
+  description: |
+    The [N x i8] declaration says N bytes, but the actual c"..."
+    content has a different byte count (accounting for \xx escapes).
+    This means LLVM will either read past the constant (buffer
+    overread) or truncate it (silent data loss).
+  impact: |
+    Buffer overread: reads garbage bytes after the string.
+    Truncation: string operations see wrong content.
+    Both are silent — no crash, just wrong behavior.
+  tags:
+    - ir
+    - string
+    - buffer
+  cwe: CWE-126
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: globals
+
+match:
+  matchers:
+    - type: regex
+      name: string_constant
+      pattern:
+        - 'constant \[(\d+) x i8\] c"([^"]*)"'
+      extractor:
+        name: declared_size
+        group: 1
+  condition: or
+
+extractors:
+  - type: regex
+    name: constant_name
+    pattern: '(@[\w.]+) ='
+    group: 1
+  - type: regex
+    name: declared_size
+    pattern: '\[(\d+) x i8\]'
+    group: 1
+
+report:
+  format: |
+    {constant_name} declares [{declared_size} x i8] but content byte count
+    may not match. Verify with 'culebra strings <file>'.
+
+remediation:
+  suggestion: "Run 'culebra strings <file>' to find and fix byte count mismatches"
+  difficulty: trivial

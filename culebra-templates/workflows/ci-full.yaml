@@ -1,0 +1,27 @@
+id: ci-full
+info:
+  name: Full CI scan
+  severity: info
+  description: |
+    Comprehensive scan running all available templates.
+    Suitable for CI pipelines where you want complete coverage.
+  tags:
+    - ci
+    - workflow
+
+workflow:
+  - templates:
+      tags:
+        - ir
+    input: "{ir_file}"
+
+  - templates:
+      tags:
+        - abi
+        - string
+    input: "{ir_file}"
+
+  - templates:
+      tags:
+        - bootstrap
+    input: "{ir_file}"

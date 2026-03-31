@@ -1,0 +1,44 @@
+id: stage-output-divergence
+info:
+  name: Stage N and Stage N+1 IR output differs
+  severity: high
+  author: juandenis
+  description: |
+    When bootstrapping a self-hosting compiler, the IR output
+    from stage N compiled through itself (stage N+1) should
+    eventually converge to identical output (fixed point).
+    Divergence means the compiler is not faithfully reproducing
+    its own behavior, indicating a code-gen bug that only
+    manifests during self-compilation.
+  impact: |
+    The compiler cannot self-host. Each stage produces different
+    output, meaning the compiler's behavior changes when compiled
+    by itself. This is the fundamental bootstrap failure mode.
+  tags:
+    - bootstrap
+    - stage-divergence
+    - fixed-point
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: structural_diff_marker
+      pattern:
+        - '^(define|declare) .+ @'
+  condition: or
+
+report:
+  format: |
+    This template flags potential stage divergence points.
+    Run 'culebra diff <stage1.ll> <stage2.ll>' for per-function
+    structural comparison, or 'culebra fixedpoint' to detect
+    convergence automatically.
+
+remediation:
+  suggestion: "Run 'culebra fixedpoint <compiler> <source>' to identify which functions diverge between stages"
+  difficulty: complex

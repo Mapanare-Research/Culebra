@@ -1,0 +1,42 @@
+id: phi-predecessor-mismatch
+info:
+  name: PHI node may reference non-existent predecessor
+  severity: high
+  author: juandenis
+  description: |
+    PHI nodes must list exactly the predecessor basic blocks.
+    If a predecessor label in a PHI doesn't correspond to an
+    actual branch/switch target, or if a predecessor is missing,
+    llvm-as will reject the IR. This often happens after IR
+    transforms that modify control flow without updating PHIs.
+  impact: |
+    llvm-as verification failure. If the PHI fixup script is
+    run, it may introduce incorrect values for the missing
+    predecessors, leading to wrong computation.
+  tags:
+    - ir
+    - phi
+    - control-flow
+  cwe: CWE-670
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: phi_with_label
+      pattern:
+        - '= phi .+ \[.+, %[\w.]+\]'
+  condition: or
+
+report:
+  format: |
+    PHI node found — verify predecessors match actual control flow.
+    Run 'culebra phi-check <file>' for detailed validation.
+
+remediation:
+  suggestion: "Run 'culebra phi-check <file>' to validate PHI predecessor consistency"
+  difficulty: moderate

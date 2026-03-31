@@ -1,0 +1,46 @@
+id: unreachable-after-branch
+info:
+  name: Instructions after terminator instruction
+  severity: medium
+  author: juandenis
+  description: |
+    Instructions placed after a terminator (br, ret, switch,
+    unreachable) are dead code that LLVM will reject. This
+    usually means the compiler emitted code after a return
+    or branch without starting a new basic block.
+  impact: |
+    llvm-as verification failure. The instructions after the
+    terminator are unreachable and indicate a code-gen bug.
+  tags:
+    - ir
+    - control-flow
+    - dead-code
+  cwe: CWE-561
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: terminator
+      pattern: '^\s*(br |ret |switch |unreachable)'
+      capture: {}
+
+    - id: dead_instruction
+      pattern: '^\s+(%[\w.]+ = |store |call )'
+      after: terminator
+      within_lines: 3
+
+  condition: all
+
+report:
+  format: |
+    Instruction found after terminator — this is dead code
+    that LLVM will reject during verification.
+
+remediation:
+  suggestion: "Start a new basic block after every terminator instruction"
+  difficulty: moderate

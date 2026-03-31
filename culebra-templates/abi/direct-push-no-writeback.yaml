@@ -1,0 +1,68 @@
+id: direct-push-no-writeback
+info:
+  name: List push directly to struct field without temp writeback
+  severity: high
+  author: juandenis
+  description: |
+    When pushing to a list that lives inside a struct (via GEP),
+    the push must go through a temporary alloca with explicit
+    writeback. Pushing directly to the GEP target allows LLVM's
+    alias analysis to cache the pre-push struct state, losing
+    the list mutation entirely.
+  impact: |
+    List length increments but the struct's copy of the list
+    doesn't reflect the push. Subsequent loads from the struct
+    return stale list data. In Mapanare, this caused emit_line
+    to accumulate 0 lines in stage2 while stage1 worked perfectly.
+  tags:
+    - abi
+    - sret
+    - alias-analysis
+    - stage-divergence
+  cwe: CWE-824
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: gep_to_field
+      pattern: '(%[\w.]+) = getelementptr.* ptr (%[\w.]+), i32 0, i32 (\d+)'
+      capture:
+        gep_result: 1
+        struct_ptr: 2
+        field_index: 3
+
+    - id: direct_push
+      pattern: 'call void @__mn_list_push\(ptr %{gep_result}'
+      after: gep_to_field
+      within_lines: 10
+
+    - id: missing_writeback
+      type: absent
+      pattern: 'store .+ ptr %{gep_result}'
+      after: direct_push
+      within_lines: 15
+
+  condition: all
+
+report:
+  format: |
+    List push at struct field {field_index} goes directly through
+    GEP {gep_result} without temp alloca + writeback.
+    LLVM may optimize away the mutation at -O1+.
+
+remediation:
+  suggestion: |
+    1. Create temp alloca for the list
+    2. Load list from struct field into temp
+    3. Push to temp alloca
+    4. Load updated list from temp
+    5. Store back to struct field via same GEP
+  difficulty: moderate
+
+related:
+  - sret-input-output-alias

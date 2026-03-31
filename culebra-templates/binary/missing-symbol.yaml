@@ -1,0 +1,41 @@
+id: missing-symbol
+info:
+  name: Expected runtime symbol missing from binary
+  severity: critical
+  author: juandenis
+  description: |
+    A symbol expected by the runtime (e.g., main, __mn_*)
+    is missing from the compiled binary's symbol table.
+    This will cause a linker error or runtime crash when
+    the symbol is referenced.
+  impact: |
+    Link failure if the symbol is needed at link time.
+    Runtime crash (segfault or dlsym failure) if the symbol
+    is resolved dynamically.
+  tags:
+    - binary
+    - symbol
+    - runtime
+  cwe: CWE-476
+  created: "2025-03-28"
+
+scope:
+  file_type: elf-binary
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: undefined_runtime_symbol
+      pattern:
+        - 'UNDEF.*__mn_'
+  condition: or
+
+report:
+  format: |
+    Runtime symbol is undefined in binary. Ensure the runtime
+    library is linked and all __mn_* functions are defined.
+
+remediation:
+  suggestion: "Link the runtime C file (e.g., -runtime mapanare_core.c) and verify all __mn_* functions are implemented"
+  difficulty: moderate
