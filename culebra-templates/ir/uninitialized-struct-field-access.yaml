@@ -1,0 +1,65 @@
+id: uninitialized-struct-field-access
+info:
+  name: Struct alloca zeroinitializer followed by partial field writes
+  severity: high
+  author: juandenis
+  description: |
+    A struct alloca is zeroinitializer'd then only some fields are
+    written via GEP+store. Subsequent loads of unwritten fields
+    return zero/null. In Mapanare v2.2.0, this caused
+    current_block_terminated to read uninitialized block indices
+    from LowerState, and lower_fn to crash on null FnDefData fields.
+    The pattern is: alloca + zeroinit + some GEP stores + load of
+    a field that was never explicitly set.
+  impact: |
+    Functions that read the struct get null/zero for fields the
+    caller never wrote. This causes null pointer dereferences at
+    small offsets (0x0, 0x8, 0x20) that appear to come from the
+    reader function, not the writer. Extremely confusing to debug.
+  tags:
+    - ir
+    - struct
+    - zeroinitializer
+    - uninitialized
+    - silent-failure
+  cwe: CWE-457
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: zeroinit_store
+      pattern: 'store %struct\.\w+ zeroinitializer, ptr (%[\w.]+)'
+      capture:
+        struct_ptr: 1
+
+    - id: partial_gep
+      pattern: 'getelementptr inbounds %struct\.\w+, ptr {struct_ptr}, i32 0, i32'
+      after: zeroinit_store
+      within_lines: 30
+
+  condition: all
+
+report:
+  format: |
+    Struct alloca {struct_ptr} is zeroinitializer'd then partially
+    written via GEP. Fields not explicitly set remain zero/null.
+    If this struct is passed to another function, unwritten fields
+    will cause null dereferences.
+    Run: culebra health <file.ll> --struct <name>
+
+remediation:
+  suggestion: |
+    Either initialize ALL fields explicitly via GEP+store after
+    zeroinitializer, or avoid zeroinitializer and use field-by-field
+    construction. If the struct comes from a function return (sret),
+    ensure the callee writes all fields.
+  difficulty: moderate
+
+related:
+  - match-phi-zeroinit-corruption
+  - option-type-pun-zeroinit

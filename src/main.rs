@@ -308,6 +308,30 @@ enum Commands {
         function: Option<String>,
     },
 
+    /// Show call chain between two functions with struct types along the path
+    Callchain {
+        /// Path to .ll file
+        file: String,
+        /// Source function (caller)
+        #[arg(long)]
+        from: String,
+        /// Target function (callee)
+        #[arg(long)]
+        to: String,
+        /// Max call depth to search
+        #[arg(long, default_value = "8")]
+        depth: usize,
+    },
+
+    /// Progress report — IR stats, findings summary, baseline delta, health score
+    Progress {
+        /// Path to .ll file
+        file: String,
+        /// Path to baseline file for comparison
+        #[arg(long, short)]
+        baseline: Option<String>,
+    },
+
     /// Map a crash offset to a struct field — "what's at byte 0x20?"
     Crashmap {
         /// Path to .ll file (for struct type definitions)
@@ -547,6 +571,12 @@ fn main() {
         Commands::Bisect { file_a, file_b, top } => commands::bisect::run(&file_a, &file_b, top),
         Commands::Verify { file, id, function } => {
             commands::verify::run(&file, &id, function.as_deref())
+        }
+        Commands::Callchain { file, from, to, depth } => {
+            commands::callchain::run(&file, &from, &to, depth)
+        }
+        Commands::Progress { file, baseline } => {
+            commands::progress::run(&file, baseline.as_deref())
         }
         Commands::Crashmap { file, offset, struct_name } => {
             commands::crashmap::run(&file, offset, struct_name.as_deref())

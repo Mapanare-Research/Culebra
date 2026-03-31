@@ -32,7 +32,7 @@ match:
   type: sequence
   steps:
     - id: non_entry_label
-      pattern: '^[a-z_][\w]*\d*:'
+      pattern: '^(?:for_|if_|else_|match_|while_|loop_|switch_|case_|default|merge|build_|emit_)\w*:'
       capture: {}
 
     - id: alloca_after_entry
