@@ -1,4 +1,22 @@
+# Build
 /target
+
+# Project config (user-specific)
 culebra.toml
-*.ll
 settings.local.json
+
+# IR files (except playground fixtures)
+*.ll
+!playground/fixtures/*.ll
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
