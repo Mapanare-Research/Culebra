@@ -176,7 +176,7 @@ culebra templates list --tags bootstrap
 **Example output:**
 
 ```
-culebra 17 templates in culebra-templates
+culebra 21 templates in culebra-templates
 
   ID                             SEVERITY   NAME                                     TAGS
   ----------------------------------------------------------------------------------------------------

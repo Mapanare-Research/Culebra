@@ -20,7 +20,7 @@ English | [Espanol](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [Po
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=flat-square)](Cargo.toml)
-[![Templates](https://img.shields.io/badge/templates-17_shipped-orange.svg?style=flat-square)]()
+[![Templates](https://img.shields.io/badge/templates-21_shipped-orange.svg?style=flat-square)]()
 [![GitHub Stars](https://img.shields.io/github/stars/Mapanare-Research/Culebra?style=flat-square&color=f5c542)](https://github.com/Mapanare-Research/Culebra/stargazers)
 
 <br>
@@ -284,12 +284,13 @@ See [docs.md](docs.md) for the full template specification, matcher types (regex
 
 ## Shipped Templates
 
-17 templates across 4 categories, every one from a real Mapanare bug.
+21 templates across 4 categories, every one from a real Mapanare bug.
 
 | Category | ID | Severity | What it catches |
 |---|---|---|---|
 | **ABI** | `unaligned-string-constant` | Critical | String constants at odd addresses corrupt pointer tagging |
 | **ABI** | `struct-layout-mismatch` | Critical | IR struct vs C header field count/type divergence |
+| **ABI** | `return-type-divergence` | Critical | Runtime function return type differs between stages (e.g., ptr vs {i64, i64}) |
 | **ABI** | `direct-push-no-writeback` | High | List push through GEP without temp alloca writeback |
 | **ABI** | `sret-input-output-alias` | High | sret pointer aliasing input corrupts data mid-computation |
 | **ABI** | `tagged-pointer-odd-address` | High | Odd-sized constants without alignment break pointer tagging |
@@ -300,13 +301,16 @@ See [docs.md](docs.md) for the full template specification, matcher types (regex
 | **IR** | `phi-predecessor-mismatch` | High | PHI node references non-existent predecessor block |
 | **IR** | `raw-control-byte-in-constant` | Medium | Raw control bytes in c"..." break line-based tooling |
 | **IR** | `unreachable-after-branch` | Medium | Instructions after terminator (dead code) |
+| **IR** | `dropped-else-branch` | Medium | if_then without corresponding else block -- branch silently dropped |
 | **Binary** | `missing-symbol` | Critical | Runtime symbol missing from binary symbol table |
 | **Binary** | `odd-address-rodata` | High | String at odd address in .rodata section |
 | **Bootstrap** | `function-count-drop` | Critical | Stage N+1 has fewer functions than Stage N |
 | **Bootstrap** | `stage-output-divergence` | High | Stage output doesn't converge toward fixed-point |
 | **Bootstrap** | `fixed-point-delta` | High | Compiler output doesn't stabilize after N iterations |
+| **Bootstrap** | `call-count-divergence` | High | Function calls runtime helper fewer times than stage1 (branches dropped) |
+| **Bootstrap** | `body-size-shrinkage` | High | Function body drastically smaller in self-compiled output |
 
-3 shipped workflows: `bootstrap-health-check`, `pre-commit`, `ci-full`.
+4 shipped workflows: `bootstrap-health-check`, `pre-commit`, `ci-full`, `playground-mapanare`.
 
 ---
 
@@ -399,6 +403,7 @@ culebra-templates/
     missing-byval-large-struct.yaml
     tagged-pointer-odd-address.yaml
     struct-layout-mismatch.yaml
+    return-type-divergence.yaml        # NEW — v2.2.0 playground
   ir/
     byte-count-mismatch.yaml
     empty-switch-body.yaml
@@ -406,6 +411,7 @@ culebra-templates/
     raw-control-byte.yaml
     phi-predecessor-mismatch.yaml
     unreachable-after-branch.yaml
+    dropped-else-branch.yaml           # NEW — v2.2.0 playground
   binary/
     odd-address-rodata.yaml
     missing-symbol.yaml
@@ -413,10 +419,13 @@ culebra-templates/
     stage-output-divergence.yaml
     function-count-drop.yaml
     fixed-point-delta.yaml
+    call-count-divergence.yaml         # NEW — v2.2.0 playground
+    body-size-shrinkage.yaml           # NEW — v2.2.0 playground
   workflows/
     bootstrap-health-check.yaml
     pre-commit.yaml
     ci-full.yaml
+    playground-mapanare.yaml           # NEW — v2.2.0 playground
 ```
 
 ---
