@@ -19,7 +19,7 @@ English | [Espanol](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [Po
 ![Platform](https://img.shields.io/badge/Linux%20%7C%20macOS%20%7C%20Windows-grey?style=for-the-badge)
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg?style=flat-square)](Cargo.toml)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg?style=flat-square)](Cargo.toml)
 [![Templates](https://img.shields.io/badge/templates-29_shipped-orange.svg?style=flat-square)]()
 [![GitHub Stars](https://img.shields.io/github/stars/Mapanare-Research/Culebra?style=flat-square&color=f5c542)](https://github.com/Mapanare-Research/Culebra/stargazers)
 
@@ -343,6 +343,11 @@ See [docs.md](docs.md) for the full template specification, matcher types (regex
 | `culebra test` | Run all `[[tests]]` from `culebra.toml`. |
 | `culebra watch` | Watch files, re-run a command on change. |
 | `culebra pipeline` | Run full stage pipeline end-to-end via `culebra.toml`. |
+| `culebra triage file.ll` | Group findings by root cause, deduplicate, show actionable summary. `--format json` for AI. |
+| `culebra compare a.ll b.ll` | Per-function metric comparison. `--metric calls/blocks/pushes`, `--threshold 0.3`. |
+| `culebra explain file.ll <id>` | Show matched IR in context with template description + remediation. `--function <name>`. |
+| `culebra bisect a.ll b.ll` | Find divergent functions between stages, ranked by impact (callers * delta). |
+| `culebra verify file.ll <id>` | Verify a specific fix — re-scan one template, PASS/FAIL output. `--function <name>`. |
 | `culebra fixedpoint compiler source` | Detect fixed-point convergence in self-hosting compilers. |
 | `culebra status` | Show bootstrap self-hosting progress. |
 | `culebra init` | Generate a `culebra.toml` template. |

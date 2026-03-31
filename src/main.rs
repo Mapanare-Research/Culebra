@@ -249,6 +249,62 @@ enum Commands {
         clear: bool,
     },
 
+    /// Triage: group findings by root cause, deduplicate, show actionable summary
+    Triage {
+        /// Path to .ll file
+        file: String,
+        /// Output format: text, json
+        #[arg(long, default_value = "text")]
+        format: String,
+    },
+
+    /// Compare per-function metrics between two IR files, flag significant drops
+    Compare {
+        /// First .ll file (reference/stage1)
+        file_a: String,
+        /// Second .ll file (test/stage2)
+        file_b: String,
+        /// Metric to compare: instructions, blocks, calls, pushes, allocas, stores, loads, rets
+        #[arg(long, default_value = "instructions")]
+        metric: String,
+        /// Drop threshold (0.0-1.0) — flag functions with drops above this
+        #[arg(long, default_value = "0.3")]
+        threshold: f64,
+    },
+
+    /// Explain a finding: show matched IR in context with description + remediation
+    Explain {
+        /// Path to .ll file
+        file: String,
+        /// Template ID (e.g. "return-type-divergence")
+        id: String,
+        /// Filter to a specific function
+        #[arg(long)]
+        function: Option<String>,
+    },
+
+    /// Bisect: find divergent functions between stages, ranked by impact
+    Bisect {
+        /// First .ll file (reference/stage1)
+        file_a: String,
+        /// Second .ll file (test/stage2)
+        file_b: String,
+        /// Show top N functions
+        #[arg(long, default_value = "15")]
+        top: usize,
+    },
+
+    /// Verify a specific fix: re-scan for one finding to confirm it's gone
+    Verify {
+        /// Path to .ll file
+        file: String,
+        /// Template ID to check
+        id: String,
+        /// Filter to a specific function
+        #[arg(long)]
+        function: Option<String>,
+    },
+
     /// List or show available scan templates
     Templates {
         #[command(subcommand)]
@@ -384,6 +440,20 @@ fn main() {
                 autofix,
                 dry_run,
             )
+        }
+        Commands::Triage { file, format } => commands::triage::run(&file, &format),
+        Commands::Compare {
+            file_a,
+            file_b,
+            metric,
+            threshold,
+        } => commands::compare::run(&file_a, &file_b, &metric, threshold),
+        Commands::Explain { file, id, function } => {
+            commands::explain::run(&file, &id, function.as_deref())
+        }
+        Commands::Bisect { file_a, file_b, top } => commands::bisect::run(&file_a, &file_b, top),
+        Commands::Verify { file, id, function } => {
+            commands::verify::run(&file, &id, function.as_deref())
         }
         Commands::Templates { action } => match action {
             TemplatesAction::List { tags } => {
