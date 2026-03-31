@@ -7,6 +7,7 @@ pub mod drain;
 pub mod extract;
 pub mod fixedpoint;
 pub mod init;
+pub mod map;
 pub mod phi_check;
 pub mod pipeline;
 pub mod run;

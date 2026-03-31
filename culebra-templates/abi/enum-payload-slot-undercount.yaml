@@ -1,0 +1,69 @@
+id: enum-payload-slot-undercount
+info:
+  name: Enum payload array too small for largest variant
+  severity: critical
+  author: juandenis
+  description: |
+    An enum type is defined as { i64, [N x i64] } where the tag is i64
+    and the payload is an N-slot array. If any variant contains a struct
+    that requires more than N i64-sized slots, extractvalue/insertvalue
+    will access out-of-bounds memory. In Mapanare v2.2.0, enum.Definition
+    had FnDefData (~29 slots) as a variant but the enum was sized with
+    len(payload_types) * 8, giving only [1 x i64]. The semantic checker's
+    check_block function crashed with SIGSEGV reading corrupt Definition
+    data from undersized enum storage.
+  impact: |
+    Silent memory corruption when storing large variants into undersized
+    enums. The extractvalue reads garbage for fields beyond the allocated
+    slots. Crashes manifest far from the bug — typically in a consumer
+    function (semantic checker, codegen) that reads the enum payload.
+    Valgrind shows "Invalid read of size 8" at the access site, but the
+    root cause is the enum type definition.
+  tags:
+    - abi
+    - enum
+    - memory-corruption
+    - bootstrap-killer
+  cwe: CWE-131
+  created: "2026-03-30"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: small_enum_payload
+      pattern:
+        - '%enum\.\w+ = type \{ i64, \[([1-8]) x i64\] \}'
+      extractor:
+        name: slot_count
+        group: 1
+  condition: or
+
+extractors:
+  - type: regex
+    name: enum_name
+    pattern: '(%enum\.\w+) = type'
+    group: 1
+
+report:
+  format: |
+    Enum {enum_name} has only [{slot_count} x i64] payload slots.
+    If any variant contains a struct with more than {slot_count} fields
+    (including nested struct fields), extractvalue will read out-of-bounds.
+    Check the largest variant's flattened field count against {slot_count}.
+    Compare: culebra abi <file.ll> --header <types.h>
+
+remediation:
+  suggestion: |
+    Fix the enum payload size computation to flatten all variant types
+    and use the maximum slot count. For FnDefData-like variants with
+    nested structs, recursively count i64-sized slots. The slot count
+    should be: max(flatten_to_i64_count(variant) for variant in variants).
+  difficulty: complex
+
+related:
+  - struct-layout-mismatch
+  - list-element-size-undercount

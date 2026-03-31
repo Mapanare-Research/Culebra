@@ -1,0 +1,74 @@
+id: dead-phi-chain
+info:
+  name: Dead PHI chain — unused PHIs referencing each other across types
+  severity: high
+  author: juandenis
+  description: |
+    Two or more PHI nodes form a dead chain: %if_resultA is used only
+    by %if_resultB, which itself is never consumed. When the PHIs have
+    different types (e.g., %enum.Expr vs i64), llvm-as rejects the IR
+    with "instruction forward referenced with type 'i64'" because the
+    forward reference resolves to a conflicting type. In Mapanare v2.2.0,
+    the self-hosted emitter generated if_result PHIs for every if-else
+    (even in statement context), creating chains of 2-3 dead PHIs per
+    nested if block. The fix_stage2_phis.py Pass 3 had to detect and
+    replace 115+ dead PHI chains per compilation.
+  impact: |
+    llvm-as rejects the module outright — the IR never reaches codegen.
+    Even with clang -O1 (which may skip verification), the dead PHIs
+    waste registers and confuse optimization passes. The root cause is
+    the emitter generating expression-result PHIs for statement-context
+    if-else blocks, where neither branch's "result" is ever used.
+  tags:
+    - ir
+    - phi
+    - dead-code
+    - lowerer-bug
+  cwe: CWE-561
+  created: "2026-03-30"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: phi_a
+      pattern: '(%if_result\d+) = phi (i64|i1) \['
+      capture:
+        phi_a_name: 1
+        phi_a_type: 2
+
+    - id: phi_b_uses_a
+      pattern: '(%if_result\d+) = phi (%\w+[\w.]*) \[.*{phi_a_name}[,\]]'
+      after: phi_a
+      within_lines: 30
+      capture:
+        phi_b_name: 1
+        phi_b_type: 2
+
+  condition: all
+
+report:
+  format: |
+    Dead PHI chain: {phi_a_name} ({phi_a_type}) → {phi_b_name} ({phi_b_type}).
+    {phi_a_name} is only used as an operand of {phi_b_name}, which has a
+    different type. If {phi_b_name} is also unused, this is a dead chain
+    that will cause llvm-as forward-reference type errors.
+    Fix: remove both PHIs or replace with type-appropriate constants.
+  evidence:
+    show_line: true
+    show_context: 2
+
+remediation:
+  suggestion: |
+    If the emitter generates if_result PHIs for statement-context if-else,
+    either suppress PHI generation when the result is unused, or replace
+    the dead chain with dummy constants (e.g., `add i64 0, 0` for i64,
+    `inttoptr i64 0 to ptr` for named types).
+  difficulty: moderate
+
+related:
+  - phi-operand-type-mismatch
+  - dropped-else-branch

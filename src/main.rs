@@ -221,6 +221,15 @@ enum Commands {
         dry_run: bool,
     },
 
+    /// Show a diagnostic map of templates matching a symptom or keyword
+    Map {
+        /// Search query (symptom, keyword, or tag — e.g. "segfault", "type mismatch", "phi")
+        query: Vec<String>,
+        /// Show all matches (default: top 12)
+        #[arg(long)]
+        all: bool,
+    },
+
     /// Drain a queue file — run dynamically-queued templates against their targets
     Drain {
         /// Path to .culebra-queue.yaml
@@ -335,6 +344,10 @@ fn main() {
             runtime,
         } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref()),
         Commands::Init => commands::init::run(),
+        Commands::Map { query, all } => {
+            let q = query.join(" ");
+            commands::map::run(&q, all)
+        }
         Commands::Drain {
             queue_file,
             format,
