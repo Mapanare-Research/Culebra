@@ -1,0 +1,69 @@
+id: match-phi-zeroinit-corruption
+info:
+  name: Match PHI with zeroinitializer corrupts struct state
+  severity: critical
+  author: juandenis
+  description: |
+    Match statements in the self-hosted compiler generate PHI nodes
+    that merge the "result" from each arm. When used as a statement
+    (not expression), the default/fallthrough arm produces
+    zeroinitializer for the PHI type. If the PHI type is a large
+    state struct (LowerState, EmitState, SemState), the zeroinitializer
+    overwrites all fields with null/zero, corrupting the state for
+    all subsequent code. In Mapanare v2.2.0, this was the #1
+    systemic bug — it caused 8+ distinct crashes across tokenize,
+    parse, semantic, lower, and emit phases.
+  impact: |
+    The state struct silently becomes all-zeros after the match.
+    Any field access on the corrupted state dereferences null pointers,
+    causing SIGSEGV at small offsets (0x0, 0x8, 0x10, 0x20) that
+    correspond to struct field positions. Extremely hard to diagnose
+    because the crash appears far from the match statement.
+  tags:
+    - ir
+    - phi
+    - zeroinitializer
+    - match
+    - state-corruption
+    - silent-failure
+  cwe: CWE-824
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: phi_struct_zeroinit
+      pattern:
+        - '= phi %struct\.\w+ .+zeroinitializer'
+        - '= phi %enum\.\w+ .+zeroinitializer'
+      extractor:
+        name: phi_line
+        group: 0
+  condition: or
+
+report:
+  format: |
+    PHI node with struct/enum type has a zeroinitializer arm.
+    If this match is used as a statement, the default arm produces
+    zeroinitializer, corrupting the entire state struct.
+    Fix: restructure the match to use helper functions with explicit
+    return in every arm, or convert to if-else with flag-based dispatch.
+
+remediation:
+  suggestion: |
+    Extract each match arm into a helper function that returns the
+    updated state struct. Ensure every arm (including default) returns
+    a valid state, not zeroinitializer. Example:
+      fn handle_arm_1(st: State, ...) -> State { ... return st }
+      fn handle_arm_2(st: State, ...) -> State { ... return st }
+      let result = if tag == 0 { handle_arm_1(st) } else { handle_arm_2(st) }
+  difficulty: complex
+
+related:
+  - phi-operand-type-mismatch
+  - phi-predecessor-mismatch
+  - dropped-else-branch

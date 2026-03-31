@@ -308,6 +308,48 @@ enum Commands {
         function: Option<String>,
     },
 
+    /// Map a crash offset to a struct field — "what's at byte 0x20?"
+    Crashmap {
+        /// Path to .ll file (for struct type definitions)
+        file: String,
+        /// Byte offset to map (decimal or 0x hex)
+        #[arg(long, default_value = "0", value_parser = parse_offset)]
+        offset: usize,
+        /// Struct name to map into (e.g. FnDefData, LowerState)
+        #[arg(long, name = "struct")]
+        struct_name: Option<String>,
+    },
+
+    /// Trace a variable through a function — show every load/store/phi/call
+    Trace {
+        /// Path to .ll file
+        file: String,
+        /// Function name (exact or substring)
+        #[arg(long)]
+        function: String,
+        /// Variable name to trace (e.g. %state, %result)
+        #[arg(long)]
+        var: String,
+    },
+
+    /// Struct health check — find PHI zeroinit, type-pun, null loads
+    Health {
+        /// Path to .ll file
+        file: String,
+        /// Struct name to check (omit for all structs)
+        #[arg(long, name = "struct")]
+        struct_name: Option<String>,
+    },
+
+    /// Suggest fixes for a function based on its findings
+    Suggest {
+        /// Path to .ll file
+        file: String,
+        /// Function name
+        #[arg(long)]
+        function: String,
+    },
+
     /// Save or diff a scan baseline — track progress across fix iterations
     Baseline {
         #[command(subcommand)]
@@ -380,6 +422,14 @@ enum BaselineAction {
         #[arg(long, short)]
         baseline: Option<String>,
     },
+}
+
+fn parse_offset(s: &str) -> Result<usize, String> {
+    if s.starts_with("0x") || s.starts_with("0X") {
+        usize::from_str_radix(&s[2..], 16).map_err(|e| format!("invalid hex offset: {}", e))
+    } else {
+        s.parse::<usize>().map_err(|e| format!("invalid offset: {}", e))
+    }
 }
 
 fn parse_kv(s: &str) -> Result<(String, String), String> {
@@ -497,6 +547,18 @@ fn main() {
         Commands::Bisect { file_a, file_b, top } => commands::bisect::run(&file_a, &file_b, top),
         Commands::Verify { file, id, function } => {
             commands::verify::run(&file, &id, function.as_deref())
+        }
+        Commands::Crashmap { file, offset, struct_name } => {
+            commands::crashmap::run(&file, offset, struct_name.as_deref())
+        }
+        Commands::Trace { file, function, var } => {
+            commands::trace::run(&file, &function, &var)
+        }
+        Commands::Health { file, struct_name } => {
+            commands::health::run(&file, struct_name.as_deref())
+        }
+        Commands::Suggest { file, function } => {
+            commands::suggest::run(&file, &function)
         }
         Commands::Baseline { action } => match action {
             BaselineAction::Save { file, output } => {
