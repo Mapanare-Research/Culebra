@@ -1,0 +1,64 @@
+id: dynamic-alloca-non-entry
+info:
+  name: Dynamic alloca in non-entry block risks stack misalignment
+  severity: high
+  author: juandenis
+  description: |
+    Alloca instructions in non-entry basic blocks create dynamic
+    stack allocations that may misalign RSP. When the compiled code
+    later calls libc functions (snprintf, memcpy, etc.), SSE
+    instructions like movaps require 16-byte alignment and crash
+    with SIGSEGV if RSP is odd. In Mapanare, this caused the
+    self-hosted compiler to crash when calling __mn_str_from_int.
+  impact: |
+    Intermittent SIGSEGV crashes in libc/runtime functions that
+    use SSE instructions. The crash location is misleading —
+    it appears to be in libc, not in user code. Only manifests
+    at runtime with specific input sizes that trigger the
+    non-entry alloca path.
+  tags:
+    - ir
+    - stack-alignment
+    - alloca
+    - runtime-crash
+  cwe: CWE-119
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: non_entry_label
+      pattern: '^[a-z_][\w]*\d*:'
+      capture: {}
+
+    - id: alloca_after_entry
+      pattern: '(%[\w.]+) = alloca .+, align'
+      after: non_entry_label
+      within_lines: 15
+
+  condition: all
+
+report:
+  format: |
+    Alloca instruction found in a non-entry basic block. This creates
+    a dynamic stack allocation that may misalign RSP at -O0/-O1.
+    If this function calls libc (printf, snprintf, memcpy), SSE
+    instructions will crash with SIGSEGV on misaligned access.
+    Move all allocas to the entry block.
+
+remediation:
+  suggestion: |
+    Move all alloca instructions to the function's entry block (before
+    the first branch). Use a pre-entry alloca block pattern:
+      entry:
+        %tmp = alloca T, align 16
+        br label %real_entry
+    This ensures LLVM treats them as static frame slots with proper alignment.
+  difficulty: moderate
+
+related:
+  - missing-byval-large-struct

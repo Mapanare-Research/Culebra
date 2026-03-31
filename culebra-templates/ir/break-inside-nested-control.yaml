@@ -1,0 +1,73 @@
+id: break-inside-nested-control
+info:
+  name: For-loop body branches to merge instead of for_exit (break dropped)
+  severity: critical
+  author: juandenis
+  description: |
+    The Python lowerer silently drops `break` statements inside
+    `if` blocks inside `for` loops. Instead of branching to
+    for_exit, the if_then block branches to if_merge, and the
+    loop continues. In Mapanare v2.2.0, the tokenizer's whitespace
+    skip loop ran 1M iterations creating COW lists instead of
+    breaking when whitespace ended, causing stack overflow.
+  impact: |
+    Loops that should terminate early run to their maximum iteration
+    count. With inner allocas, this quickly exhausts the stack
+    (millions of alloca + list_new calls). The binary crashes with
+    stack overflow or produces garbage output. Strace shows millions
+    of identical write() calls (e.g., "TSILWOC" COW list headers).
+  tags:
+    - ir
+    - control-flow
+    - break
+    - infinite-loop
+    - lowerer-bug
+  cwe: CWE-835
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: for_body
+      pattern: '^for_body\w*:'
+      capture: {}
+
+    - id: if_then_in_loop
+      pattern: '^if_then\w*:'
+      after: for_body
+      within_lines: 30
+
+    - id: branch_to_merge_not_exit
+      pattern: '^\s*br label %if_merge'
+      after: if_then_in_loop
+      within_lines: 5
+
+  condition: all
+
+report:
+  format: |
+    if_then block inside for_body branches to if_merge instead of
+    for_exit. This is the "break dropped" pattern — the break
+    statement was silently removed by the Python lowerer.
+    The loop will run to max iterations instead of exiting early.
+
+remediation:
+  suggestion: |
+    In .mn source, replace break with a flag-based pattern:
+      let mut done = false
+      for _ in 0..N {
+        if !done {
+          if condition { done = true }
+          // ... loop body (guarded by !done)
+        }
+      }
+    Or extract the inner logic into a helper function with early return.
+  difficulty: moderate
+
+related:
+  - dropped-else-branch
+  - return-inside-nested-block

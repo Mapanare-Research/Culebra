@@ -1,0 +1,61 @@
+id: list-element-size-undercount
+info:
+  name: List created with element size smaller than actual element
+  severity: high
+  author: juandenis
+  description: |
+    __mn_list_new(elem_sz) is called with a fixed element size (e.g., 16)
+    but the actual elements pushed are larger structs. When __mn_list_push
+    copies elements into the list backing array, it uses the declared
+    elem_sz, truncating data beyond that size. In Mapanare v2.2.0,
+    Definition structs were larger than 16 bytes but the list was
+    created with __mn_list_new(16), causing the semantic checker to
+    read corrupt data from list elements.
+  impact: |
+    List elements are silently truncated. Fields beyond elem_sz bytes
+    contain garbage from adjacent elements or uninitialized memory.
+    memcpy reads/writes out of bounds when the actual element size
+    exceeds the declared size. Crashes appear in the semantic checker
+    or downstream consumers, far from the actual bug.
+  tags:
+    - abi
+    - list
+    - element-size
+    - memory-corruption
+  cwe: CWE-131
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: list_new_small
+      pattern:
+        - '@__mn_list_new\(i64 (8|16)\)'
+      extractor:
+        name: elem_size
+        group: 1
+  condition: or
+
+report:
+  format: |
+    List created with elem_sz={elem_size}. If the actual element type
+    is larger (e.g., a struct with >2 fields), elements will be
+    truncated on push. Verify with:
+      culebra table <file.ll> | grep list_push
+    Check the struct size of elements being pushed to this list.
+
+remediation:
+  suggestion: |
+    Ensure __mn_list_new receives the actual sizeof the element type.
+    For unknown types, use a safe default (e.g., 32 or 64) rather
+    than 8 or 16. Better: compute element size from the LLVM type
+    at emit time using datalayout.
+  difficulty: moderate
+
+related:
+  - direct-push-no-writeback
+  - struct-layout-mismatch

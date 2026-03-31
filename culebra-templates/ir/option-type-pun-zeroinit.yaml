@@ -1,0 +1,68 @@
+id: option-type-pun-zeroinit
+info:
+  name: Option discriminant clobbered by inner type store over zeroinitializer
+  severity: critical
+  author: juandenis
+  description: |
+    When wrapping a value into Option<T>, the Python lowerer emits:
+      store {i1, T} zeroinitializer, ptr %opt   ; Option = None
+      store T %value, ptr %opt                   ; overwrite with inner value
+    The second store writes T at offset 0, which overlaps the i1
+    discriminant field. If T's first field happens to be 0 (e.g.,
+    an enum variant tag like ElseBlock=0), the i1 reads as 0 (None).
+    All Option<ElseClause> values silently become None, dropping
+    every else branch in the program.
+  impact: |
+    Every Optional value whose inner type has a zero-valued first
+    field is treated as None. In Mapanare v2.2.0, this caused ALL
+    else clauses to be silently dropped during self-compilation —
+    the tokenizer lost 4 of 5 branches, the parser lost all else
+    handling, and the emitter produced truncated output.
+  tags:
+    - ir
+    - type-safety
+    - option
+    - silent-failure
+    - control-flow
+  cwe: CWE-843
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: zeroinit
+      pattern: 'store \{i1, .+\} zeroinitializer, ptr (%[\w.]+)'
+      capture:
+        opt_ptr: 1
+
+    - id: overwrite
+      pattern: 'store \{i64[^}]*\} %.+, ptr {opt_ptr}'
+      after: zeroinit
+      within_lines: 5
+
+  condition: all
+
+report:
+  format: |
+    Zeroinitializer for Option type followed by store of inner value
+    to the same pointer {opt_ptr}. The inner type's first field
+    overwrites the i1 discriminant. If it's 0, Option reads as None.
+    Fix: use insertvalue to set i1=1 (Some) before storing the payload.
+
+remediation:
+  suggestion: |
+    Replace the zeroinit+overwrite pattern with proper Option wrapping:
+      %tmp = insertvalue {i1, T} undef, i1 1, 0       ; Some discriminant
+      %opt = insertvalue {i1, T} %tmp, T %value, 1     ; payload
+      store {i1, T} %opt, ptr %dest
+    Or fix the parser to explicitly wrap in Some() so the lowerer
+    generates WrapSome with i1=1.
+  difficulty: moderate
+
+related:
+  - dropped-else-branch
+  - ret-type-mismatch

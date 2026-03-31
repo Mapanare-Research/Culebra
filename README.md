@@ -20,7 +20,7 @@ English | [Espanol](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [Po
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
 [![Version](https://img.shields.io/badge/version-0.1.0-blue.svg?style=flat-square)](Cargo.toml)
-[![Templates](https://img.shields.io/badge/templates-21_shipped-orange.svg?style=flat-square)]()
+[![Templates](https://img.shields.io/badge/templates-29_shipped-orange.svg?style=flat-square)]()
 [![GitHub Stars](https://img.shields.io/github/stars/Mapanare-Research/Culebra?style=flat-square&color=f5c542)](https://github.com/Mapanare-Research/Culebra/stargazers)
 
 <br>
@@ -284,7 +284,7 @@ See [docs.md](docs.md) for the full template specification, matcher types (regex
 
 ## Shipped Templates
 
-21 templates across 4 categories, every one from a real Mapanare bug.
+29 templates across 4 categories, every one from a real Mapanare bug.
 
 | Category | ID | Severity | What it catches |
 |---|---|---|---|
@@ -295,10 +295,18 @@ See [docs.md](docs.md) for the full template specification, matcher types (regex
 | **ABI** | `sret-input-output-alias` | High | sret pointer aliasing input corrupts data mid-computation |
 | **ABI** | `tagged-pointer-odd-address` | High | Odd-sized constants without alignment break pointer tagging |
 | **ABI** | `missing-byval-large-struct` | Medium | Large structs passed as bare ptr without byval |
+| **ABI** | `large-struct-by-value` | High | Structs >56 bytes passed by value via load/store instead of sret/memcpy |
+| **ABI** | `list-element-size-undercount` | High | `__mn_list_new(N)` with N smaller than actual element struct |
 | **IR** | `empty-switch-body` | Critical | Switch with 0 cases -- match arms not generated |
+| **IR** | `break-inside-nested-control` | Critical | Break inside if-inside-for dropped — infinite loop |
+| **IR** | `option-type-pun-zeroinit` | Critical | Option discriminant clobbered by inner type store over zeroinitializer |
 | **IR** | `ret-type-mismatch` | Critical | Return type doesn't match function signature |
 | **IR** | `byte-count-mismatch` | High | `[N x i8]` declared size vs actual content differs |
 | **IR** | `phi-predecessor-mismatch` | High | PHI node references non-existent predecessor block |
+| **IR** | `internal-linkage-dce` | High | Internal-linkage functions stripped by LLVM -O1 optimizer |
+| **IR** | `dynamic-alloca-non-entry` | High | Allocas in non-entry blocks misalign RSP, crash libc SSE calls |
+| **IR** | `return-inside-nested-block` | High | Return inside match/if doesn't terminate -- execution falls through |
+| **IR** | `phi-operand-type-mismatch` | High | PHI operand type differs from declared type (dead if_result PHIs) |
 | **IR** | `raw-control-byte-in-constant` | Medium | Raw control bytes in c"..." break line-based tooling |
 | **IR** | `unreachable-after-branch` | Medium | Instructions after terminator (dead code) |
 | **IR** | `dropped-else-branch` | Medium | if_then without corresponding else block -- branch silently dropped |
@@ -403,7 +411,9 @@ culebra-templates/
     missing-byval-large-struct.yaml
     tagged-pointer-odd-address.yaml
     struct-layout-mismatch.yaml
-    return-type-divergence.yaml        # NEW — v2.2.0 playground
+    return-type-divergence.yaml        # NEW — playground
+    large-struct-by-value.yaml         # NEW — playground
+    list-element-size-undercount.yaml  # NEW — playground
   ir/
     byte-count-mismatch.yaml
     empty-switch-body.yaml
@@ -411,7 +421,13 @@ culebra-templates/
     raw-control-byte.yaml
     phi-predecessor-mismatch.yaml
     unreachable-after-branch.yaml
-    dropped-else-branch.yaml           # NEW — v2.2.0 playground
+    dropped-else-branch.yaml           # NEW — playground
+    option-type-pun-zeroinit.yaml      # NEW — playground
+    internal-linkage-dce.yaml          # NEW — playground
+    dynamic-alloca-non-entry.yaml      # NEW — playground
+    return-inside-nested-block.yaml    # NEW — playground
+    phi-operand-type-mismatch.yaml     # NEW — playground
+    break-inside-nested-control.yaml   # NEW — playground
   binary/
     odd-address-rodata.yaml
     missing-symbol.yaml

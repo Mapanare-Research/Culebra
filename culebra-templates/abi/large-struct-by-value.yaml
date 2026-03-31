@@ -1,0 +1,56 @@
+id: large-struct-by-value
+info:
+  name: Large struct (>56 bytes) passed by value via load/store
+  severity: high
+  author: juandenis
+  description: |
+    Structs larger than ~56 bytes should not be passed by value
+    through SSA load/store instructions. LLVM generates multiple
+    movaps/memcpy operations that can miscompile at -O1+ or cause
+    stack alignment issues. In Mapanare, LowerResult (760 bytes)
+    and LowerState (680 bytes) caused crashes when copied by value.
+  impact: |
+    Runtime crashes during large struct copies. Manifests as
+    SIGSEGV in memcpy or movaps instructions. Only appears
+    with structs above a certain size threshold, making it
+    hard to reproduce with small test cases.
+  tags:
+    - abi
+    - struct
+    - sret
+    - large-value
+  cwe: CWE-131
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: large_value_load
+      pattern:
+        - '= load \{(?:[^}]*\{[^}]*\}[^}]*){3,}\}'
+        - '= load %\w+, ptr'
+  condition: or
+
+report:
+  format: |
+    Load of a deeply nested struct type detected. If this struct
+    is >56 bytes, it should be passed via sret/byref pointer
+    instead of by-value load/store. Large SSA values cause
+    miscompilation at -O1+ and stack alignment crashes.
+    Use: culebra abi <file.ll> to check struct sizes.
+
+remediation:
+  suggestion: |
+    Replace load/store of large structs with pointer-based passing:
+    1. Add sret attribute to functions returning large structs
+    2. Use memcpy for large struct copies between allocas
+    3. Decompose field-by-field access instead of whole-struct moves
+  difficulty: complex
+
+related:
+  - missing-byval-large-struct
+  - struct-layout-mismatch

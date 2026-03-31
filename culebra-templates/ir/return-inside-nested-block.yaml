@@ -1,0 +1,68 @@
+id: return-inside-nested-block
+info:
+  name: Return inside nested control flow may not terminate block
+  severity: high
+  author: juandenis
+  description: |
+    The Python text emitter sometimes fails to generate a proper
+    terminator for return statements inside match arms or nested
+    if blocks. Execution falls through to subsequent statements
+    instead of exiting the function. In Mapanare, this caused
+    strip_percent to return "%str" instead of "str", and struct
+    constructors to lose their type information (MIR type reverts
+    to unknown/i64).
+  impact: |
+    Functions with early returns inside match/if produce silently
+    wrong results. The most dangerous case: struct constructors
+    matched by name return the correct value, but control falls
+    through to a generic Call() fallback that overwrites it with
+    an unknown-typed result. Downstream code uses i64 allocas
+    for struct values.
+  tags:
+    - ir
+    - control-flow
+    - terminator
+    - silent-failure
+    - lowerer-bug
+  cwe: CWE-478
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: ret_instruction
+      pattern: '^\s*ret '
+      capture: {}
+
+    - id: code_after_ret
+      pattern: '^\s*(%[\w.]+) = (call|load|add|sub|mul|getelementptr|insertvalue|extractvalue) '
+      after: ret_instruction
+      within_lines: 5
+
+  condition: all
+
+report:
+  format: |
+    Code found after a ret instruction without an intervening label.
+    This indicates the ret did not actually terminate control flow —
+    either it was emitted in a nested block that fell through, or
+    the block structure is malformed. The code after ret will execute
+    instead of the return.
+
+remediation:
+  suggestion: |
+    Ensure every ret instruction is followed by either:
+    1. A new basic block label (label:)
+    2. The end of the function (})
+    3. An unreachable instruction
+    In .mn source, avoid returns inside nested match/if — use variable
+    assignment + single return at function end instead.
+  difficulty: moderate
+
+related:
+  - unreachable-after-branch
+  - dropped-else-branch

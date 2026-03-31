@@ -1,0 +1,58 @@
+id: phi-operand-type-mismatch
+info:
+  name: PHI node operand type doesn't match PHI declared type
+  severity: high
+  author: juandenis
+  description: |
+    A PHI node declares type %enum.Expr or %struct.S but one of its
+    operands was defined as i64 or a different struct type. This
+    happens when if-else is used as a statement (not expression) —
+    the emitter generates if_result PHIs referencing the "last value"
+    from each branch, which may have unrelated types. In Mapanare
+    v2.2.0, this caused llvm-as forward-reference type errors and
+    required the PHI fixer script to add a Pass 2 that replaces
+    mismatched operands with zeroinitializer.
+  impact: |
+    llvm-as rejects the IR with "instruction forward referenced with
+    type 'i64'" errors. Even if compiled with clang -O1 (which is
+    more lenient), the PHI may produce garbage values if it's
+    actually consumed. In practice these PHIs are dead (statement
+    context), but they block the pipeline.
+  tags:
+    - ir
+    - phi
+    - type-safety
+    - lowerer-bug
+  cwe: CWE-843
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: phi_with_named_type
+      pattern:
+        - '= phi %\w+[\w.]* \['
+  condition: or
+
+report:
+  format: |
+    PHI node with named struct/enum type found. If any operand was
+    defined with a different type (e.g., i64), this is a type mismatch
+    that llvm-as will reject. Common cause: if-else used as statement
+    generates if_result PHIs referencing unrelated branch values.
+    Fix: replace mismatched operands with zeroinitializer.
+
+remediation:
+  suggestion: |
+    If the PHI is dead (value never consumed), replace mismatched
+    operands with zeroinitializer of the PHI type. If the PHI is
+    live, fix the emitter to ensure both branches produce the same type.
+  difficulty: moderate
+
+related:
+  - phi-predecessor-mismatch
+  - dropped-else-branch

@@ -1,0 +1,67 @@
+id: internal-linkage-dce
+info:
+  name: Internal-linkage functions at risk of LLVM -O1 dead-code elimination
+  severity: high
+  author: juandenis
+  description: |
+    Functions with `define internal` linkage can be silently removed
+    by LLVM's dead-code elimination at -O1 or higher, especially
+    when sret calling conventions are involved. In Mapanare, 93 of
+    367 internal functions were stripped from the binary despite
+    being directly called in the IR. The optimizer misjudged
+    reachability due to complex sret call chains.
+  impact: |
+    Called functions vanish from the binary, causing NULL function
+    pointer dereferences (SIGSEGV at 0x0) at runtime. The IR is
+    correct (llvm-as validates), but the compiled binary is broken.
+    Extremely difficult to diagnose because the crash is in a
+    different function from the one that was eliminated.
+  tags:
+    - ir
+    - optimizer
+    - linkage
+    - sret
+  cwe: CWE-561
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: internal_function
+      pattern:
+        - '^define internal .+ @'
+      extractor:
+        name: function_name
+        group: 0
+  condition: or
+
+extractors:
+  - type: regex
+    name: fn_name
+    pattern: '@([\w]+)\('
+    group: 1
+
+report:
+  format: |
+    Function @{fn_name} has internal linkage. If compiled with -O1+,
+    LLVM may eliminate it during dead-code analysis. In Mapanare,
+    93/367 internal functions were incorrectly stripped.
+    Verify with: objdump -t <binary> | grep {fn_name}
+    Fix: remove 'internal' linkage or ensure call graph is visible.
+
+remediation:
+  suggestion: |
+    Replace 'define internal' with 'define' to prevent DCE.
+    Trade-off: ~100KB larger binary, but all functions survive optimization.
+  autofix:
+    type: line_replace
+    match: 'define internal '
+    replace: 'define '
+  difficulty: simple
+
+related:
+  - function-count-drop
