@@ -1,0 +1,19 @@
+# Example queue file — Mapanare writes entries here as it encounters issues.
+# Run with: culebra drain playground/fixtures/.culebra-queue.yaml
+
+queued:
+  # Mapanare hit a return-type mismatch during stage2 lowering
+  - template: return-type-divergence
+    target: playground/fixtures/stage2-lowerer-bugs.ll
+    reason: "stage2 returned i1 where stage1 returned i64"
+
+  # The switch emitter produced 0 cases — queue IR pathology checks
+  - tags: [ir, control-flow]
+    target: playground/fixtures/stage2-lowerer-bugs.ll
+    reason: "switch instruction emitted with 0 cases"
+    stop_on: critical
+
+  # Function count dropped between stages — check bootstrap divergence
+  - tags: [bootstrap]
+    target: playground/fixtures/stage2-lowerer-bugs.ll
+    reason: "function count dropped from 42 to 38"

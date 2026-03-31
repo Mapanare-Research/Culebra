@@ -221,6 +221,25 @@ enum Commands {
         dry_run: bool,
     },
 
+    /// Drain a queue file — run dynamically-queued templates against their targets
+    Drain {
+        /// Path to .culebra-queue.yaml
+        #[arg(default_value = ".culebra-queue.yaml")]
+        queue_file: String,
+        /// Output format: text, json, sarif, markdown
+        #[arg(long, default_value = "text")]
+        format: String,
+        /// Apply auto-fixes
+        #[arg(long)]
+        autofix: bool,
+        /// Show fixes without applying (use with --autofix)
+        #[arg(long)]
+        dry_run: bool,
+        /// Clear the queue file after draining
+        #[arg(long)]
+        clear: bool,
+    },
+
     /// List or show available scan templates
     Templates {
         #[command(subcommand)]
@@ -316,6 +335,13 @@ fn main() {
             runtime,
         } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref()),
         Commands::Init => commands::init::run(),
+        Commands::Drain {
+            queue_file,
+            format,
+            autofix,
+            dry_run,
+            clear,
+        } => commands::drain::run(&queue_file, &format, autofix, dry_run, clear),
         Commands::Scan {
             file,
             tags,

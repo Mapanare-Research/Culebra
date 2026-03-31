@@ -3,6 +3,7 @@ pub mod audit;
 pub mod binary;
 pub mod check;
 pub mod diff;
+pub mod drain;
 pub mod extract;
 pub mod fixedpoint;
 pub mod init;

@@ -328,6 +328,36 @@ pub struct Autofix {
 }
 
 // ---------------------------------------------------------------------------
+// Drain queue — dynamic template queue written by external tools (e.g. Mapanare)
+// ---------------------------------------------------------------------------
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DrainQueue {
+    pub queued: Vec<DrainEntry>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct DrainEntry {
+    /// Run a specific template by ID (e.g. "abi/return-type-divergence")
+    #[serde(default)]
+    pub template: Option<String>,
+    /// Or select templates by tags
+    #[serde(default)]
+    pub tags: Vec<String>,
+    /// Target file to scan
+    pub target: String,
+    /// Optional C header for cross-reference templates
+    #[serde(default)]
+    pub header: Option<String>,
+    /// Human-readable reason this entry was queued (for reporting)
+    #[serde(default)]
+    pub reason: Option<String>,
+    /// Stop the entire drain if this entry produces findings at this severity or above
+    #[serde(default)]
+    pub stop_on: Option<Severity>,
+}
+
+// ---------------------------------------------------------------------------
 // Workflow (separate template type)
 // ---------------------------------------------------------------------------
 
