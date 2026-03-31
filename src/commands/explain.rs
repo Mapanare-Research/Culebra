@@ -55,6 +55,7 @@ pub fn run(file: &str, finding_id: &str, function: Option<&str>) -> i32 {
     };
 
     if filtered.is_empty() {
+        // Diagnostic: explain WHY there were 0 matches
         println!(
             "{} No matches for '{}'{} in {}",
             "culebra".green().bold(),
@@ -62,6 +63,41 @@ pub fn run(file: &str, finding_id: &str, function: Option<&str>) -> i32 {
             function.map(|f| format!(" in function '{}'", f)).unwrap_or_default(),
             file
         );
+        println!();
+        println!("  {}", "Diagnosis:".bold());
+        println!("    Template loaded: {}", "yes".green());
+        println!("    Scope:           {} / {:?}",
+            format!("{:?}", template.scope.file_type),
+            template.scope.section
+        );
+        println!("    Functions in IR: {}", module.functions.len());
+        println!("    Declarations:    {}", module.declares.len());
+
+        if template.scope.file_type == FileType::CrossReference {
+            println!("    {} This template requires --header for cross-reference matching.", "note:".yellow().bold());
+            println!("    Run: culebra scan {} --id {} --header <runtime.h>", file, finding_id);
+        } else if findings.is_empty() {
+            // Template ran but produced 0 findings
+            println!("    Matches (all):   0 — template regex did not match any IR lines");
+            // Show what the template is looking for
+            println!();
+            println!("    {} The template pattern did not match anything in this file.", "reason:".yellow().bold());
+            println!("    This means the bug pattern is absent — either it's already fixed,");
+            println!("    or the IR uses a different code shape than the template expects.");
+            println!("    Run 'culebra templates show {}' to see the exact patterns.", finding_id);
+        } else if function.is_some() {
+            // Template matched but not in the specified function
+            let matched_fns: Vec<_> = findings.iter()
+                .filter_map(|f| f.function.as_deref())
+                .collect::<std::collections::HashSet<_>>()
+                .into_iter()
+                .collect();
+            println!("    Matches (all):   {} — but none in the specified function", findings.len());
+            println!("    Matched in:      {}",
+                if matched_fns.is_empty() { "(global scope)".to_string() }
+                else { matched_fns.into_iter().collect::<Vec<_>>().join(", ") }
+            );
+        }
         return 0;
     }
 

@@ -6,7 +6,7 @@ use crate::template::engine::{self, Finding};
 use crate::template::loader;
 use crate::template::schema::{FileType, Severity};
 
-pub fn run(file: &str, format: &str) -> i32 {
+pub fn run(file: &str, format: &str, brief: bool) -> i32 {
     // Load and run all templates (same as scan but with triage output)
     let templates_dir = match loader::find_templates_dir() {
         Some(dir) => dir,
@@ -54,7 +54,9 @@ pub fn run(file: &str, format: &str) -> i32 {
         sev_a.cmp(sev_b).then_with(|| b.1.len().cmp(&a.1.len()))
     });
 
-    if format == "json" {
+    if brief {
+        print_brief(&sorted_groups, &all_findings);
+    } else if format == "json" {
         print_json(&sorted_groups, file, &all_findings);
     } else {
         print_text(&sorted_groups, file, &all_findings);
@@ -74,6 +76,43 @@ fn severity_label(s: &Severity) -> &'static str {
         Severity::Low => "low",
         Severity::Info => "info",
     }
+}
+
+fn print_brief(groups: &[(String, Vec<&Finding>)], all: &[Finding]) {
+    let crit: Vec<_> = groups.iter()
+        .filter(|(_, fs)| fs[0].severity == Severity::Critical)
+        .map(|(id, _)| id.as_str())
+        .collect();
+    let high_count = groups.iter()
+        .filter(|(_, fs)| fs[0].severity == Severity::High)
+        .count();
+    let med_count = groups.iter()
+        .filter(|(_, fs)| fs[0].severity == Severity::Medium)
+        .count();
+    let low_count = groups.iter()
+        .filter(|(_, fs)| matches!(fs[0].severity, Severity::Low | Severity::Info))
+        .count();
+
+    let mut parts = Vec::new();
+    if !crit.is_empty() {
+        parts.push(format!("{} critical ({})", crit.len(), crit.join(", ")));
+    }
+    if high_count > 0 {
+        parts.push(format!("{} high", high_count));
+    }
+    if med_count > 0 {
+        parts.push(format!("{} medium", med_count));
+    }
+    if low_count > 0 {
+        parts.push(format!("{} low", low_count));
+    }
+
+    println!(
+        "{} root causes, {} findings: {}",
+        groups.len(),
+        all.len(),
+        parts.join(", ")
+    );
 }
 
 fn print_text(groups: &[(String, Vec<&Finding>)], file: &str, all: &[Finding]) {

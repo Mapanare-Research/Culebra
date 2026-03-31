@@ -256,6 +256,9 @@ enum Commands {
         /// Output format: text, json
         #[arg(long, default_value = "text")]
         format: String,
+        /// One-line summary (minimal tokens for AI)
+        #[arg(long)]
+        brief: bool,
     },
 
     /// Compare per-function metrics between two IR files, flag significant drops
@@ -305,6 +308,26 @@ enum Commands {
         function: Option<String>,
     },
 
+    /// Save or diff a scan baseline — track progress across fix iterations
+    Baseline {
+        #[command(subcommand)]
+        action: BaselineAction,
+    },
+
+    /// Assert a template fires (--expect) or doesn't fire (--reject) on a file
+    LintTemplate {
+        /// Path to .ll file
+        file: String,
+        /// Template ID to check
+        id: String,
+        /// Template MUST fire (fail if 0 matches)
+        #[arg(long)]
+        expect: bool,
+        /// Template must NOT fire (fail if any matches)
+        #[arg(long)]
+        reject: bool,
+    },
+
     /// List or show available scan templates
     Templates {
         #[command(subcommand)]
@@ -336,6 +359,26 @@ enum TemplatesAction {
     Show {
         /// Template ID
         id: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum BaselineAction {
+    /// Save current scan findings as baseline
+    Save {
+        /// Path to .ll file to scan
+        file: String,
+        /// Output path for baseline file
+        #[arg(long, short)]
+        output: Option<String>,
+    },
+    /// Compare current scan against saved baseline
+    Diff {
+        /// Path to .ll file to scan
+        file: String,
+        /// Path to baseline file
+        #[arg(long, short)]
+        baseline: Option<String>,
     },
 }
 
@@ -441,7 +484,7 @@ fn main() {
                 dry_run,
             )
         }
-        Commands::Triage { file, format } => commands::triage::run(&file, &format),
+        Commands::Triage { file, format, brief } => commands::triage::run(&file, &format, brief),
         Commands::Compare {
             file_a,
             file_b,
@@ -454,6 +497,17 @@ fn main() {
         Commands::Bisect { file_a, file_b, top } => commands::bisect::run(&file_a, &file_b, top),
         Commands::Verify { file, id, function } => {
             commands::verify::run(&file, &id, function.as_deref())
+        }
+        Commands::Baseline { action } => match action {
+            BaselineAction::Save { file, output } => {
+                commands::baseline::run_save(&file, output.as_deref())
+            }
+            BaselineAction::Diff { file, baseline } => {
+                commands::baseline::run_diff(&file, baseline.as_deref())
+            }
+        },
+        Commands::LintTemplate { file, id, expect, reject } => {
+            commands::lint_template::run(&file, &id, expect, reject)
         }
         Commands::Templates { action } => match action {
             TemplatesAction::List { tags } => {

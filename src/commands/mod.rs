@@ -1,5 +1,6 @@
 pub mod abi;
 pub mod audit;
+pub mod baseline;
 pub mod binary;
 pub mod bisect;
 pub mod check;
@@ -10,6 +11,7 @@ pub mod explain;
 pub mod extract;
 pub mod fixedpoint;
 pub mod init;
+pub mod lint_template;
 pub mod map;
 pub mod phi_check;
 pub mod pipeline;

@@ -4,6 +4,7 @@
 # Project config (user-specific)
 culebra.toml
 settings.local.json
+.culebra-baseline.json
 
 # IR files (except playground fixtures)
 *.ll
