@@ -1,0 +1,55 @@
+id: body-size-shrinkage
+info:
+  name: Function body drastically smaller in self-compiled output
+  severity: high
+  author: juandenis
+  description: |
+    When the self-hosted compiler emits a function with significantly
+    fewer instructions than the Python-compiled stage1, it means
+    large portions of the function body were silently dropped.
+    In Mapanare v2.2.0, lexer__tokenize was 846 lines in stage1
+    but only 352 lines in stage2 — over half the function body
+    was missing, including all non-alpha token branches.
+  impact: |
+    The function compiles and links but is missing critical logic.
+    Since LLVM doesn't validate semantic completeness (only syntactic
+    correctness), the truncated function produces subtly wrong output
+    rather than failing loudly.
+  tags:
+    - bootstrap
+    - stage-divergence
+    - body-truncation
+    - silent-failure
+  cwe: CWE-478
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: short_tokenize_body
+      pattern:
+        - '^define .+ @\w*tokenize\w*\('
+  condition: or
+
+report:
+  format: |
+    Found tokenize function definition. Compare its instruction count
+    against stage1 using 'culebra table <stage1.ll> <stage2.ll>'.
+    A >30% instruction count drop indicates silent body truncation.
+    Common cause: Python lowerer dropping nested if/else/match branches.
+
+remediation:
+  suggestion: |
+    Use 'culebra diff' to identify exactly which basic blocks are missing.
+    Then check the .mn source for patterns known to trigger the Python
+    lowerer's branch-dropping bug: nested else, return-inside-if-inside-for,
+    nested match expressions.
+  difficulty: complex
+
+related:
+  - function-count-drop
+  - stage-output-divergence

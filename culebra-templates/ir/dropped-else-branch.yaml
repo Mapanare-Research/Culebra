@@ -1,0 +1,66 @@
+id: dropped-else-branch
+info:
+  name: If-then block without corresponding else branch
+  severity: medium
+  author: juandenis
+  description: |
+    An if_then block branches to if_merge without any else_* block
+    between them. While this can be legitimate (simple if without else),
+    in self-compiled IR it often indicates the Python lowerer silently
+    dropped the else branch. In Mapanare v2.2.0, the tokenizer's
+    5-way if/else chain was reduced to a single if_alpha → if_merge,
+    with all else_check_digit/string/char/operator blocks missing.
+  impact: |
+    The else path falls through to merge without executing any
+    alternative logic. Inputs that don't match the if condition
+    are silently ignored rather than handled by else branches.
+  tags:
+    - ir
+    - control-flow
+    - branch-dropping
+    - lowerer-bug
+  cwe: CWE-478
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: if_then
+      pattern: '^if_\w+:'
+      capture: {}
+
+    - id: direct_merge
+      pattern: '^\s*br label %if_merge'
+      after: if_then
+      within_lines: 20
+
+    - id: no_else_block
+      type: absent
+      pattern: '^else_\w+:'
+      after: if_then
+      within_lines: 25
+
+  condition: all
+
+report:
+  format: |
+    if_then block branches directly to if_merge with no else block.
+    This may be a legitimate simple-if, but in self-compiled IR it
+    often means the Python lowerer dropped the else branch.
+    Compare with stage1 IR to check if else branches existed.
+
+remediation:
+  suggestion: |
+    Check the .mn source for if/else chains. If the source has else
+    branches, the lowerer is dropping them. Workaround: convert
+    if/else chains to flag-guarded sequential blocks or extract
+    each branch into a helper function.
+  difficulty: moderate
+
+related:
+  - body-size-shrinkage
+  - call-count-divergence

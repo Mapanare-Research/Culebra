@@ -1,0 +1,73 @@
+id: return-type-divergence
+info:
+  name: Function return type diverges between stages
+  severity: critical
+  author: juandenis
+  description: |
+    A runtime function is declared with a different return type in
+    stage2 than in stage1. This is the most dangerous ABI mismatch:
+    the caller reads a register (or memory) that the callee never
+    wrote, getting garbage. In Mapanare v2.2.0, __mn_range was
+    declared as returning {i64, i64} in stage2 but ptr in stage1.
+    The C runtime returns void*, so stage2's extractvalue read
+    garbage from rdx, causing for_start >= for_end and TOKS=0.
+  impact: |
+    Every call site silently receives garbage. Control flow that
+    depends on the return value (loop bounds, conditionals) takes
+    wrong paths. The binary runs without crashing but produces
+    zero output — the hardest category of bug to diagnose.
+  tags:
+    - abi
+    - return-type
+    - stage-divergence
+    - silent-failure
+  cwe: CWE-843
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: declarations
+
+match:
+  matchers:
+    - type: regex
+      name: struct_return_on_runtime_fn
+      pattern:
+        - 'declare \{[^}]+\} @__mn_'
+      extractor:
+        name: function_decl
+        group: 0
+  condition: or
+
+extractors:
+  - type: regex
+    name: return_type
+    pattern: 'declare (\{[^}]+\}) @'
+    group: 1
+  - type: regex
+    name: function_name
+    pattern: '@([\w]+)\('
+    group: 1
+
+report:
+  format: |
+    Runtime function @{function_name} returns a struct type {return_type}.
+    If stage1 declares this function returning ptr (opaque pointer),
+    this is a critical ABI mismatch. The C runtime returns void* but
+    the caller will extractvalue from a struct that was never populated.
+    Compare: culebra diff <stage1.ll> <stage2.ll> --declarations
+
+remediation:
+  suggestion: |
+    Fix the self-hosted emitter's declaration of this function to match
+    the C runtime's actual signature. For __mn_range: the C runtime
+    returns void* (an iterator pointer), not {i64, i64}.
+  autofix:
+    type: line_replace
+    match: 'declare \{i64, i64\} @__mn_range'
+    replace: 'declare ptr @__mn_range'
+  difficulty: moderate
+
+related:
+  - struct-layout-mismatch
+  - ret-type-mismatch

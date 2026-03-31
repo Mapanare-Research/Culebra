@@ -1,0 +1,52 @@
+id: call-count-divergence
+info:
+  name: Function has suspiciously few calls to a runtime function
+  severity: high
+  author: juandenis
+  description: |
+    When a function that should call a runtime helper multiple times
+    (e.g., __mn_list_push for each branch of a tokenizer) only calls
+    it once, it means most code paths were silently dropped during
+    self-compilation. In Mapanare v2.2.0, the stage2 tokenize had
+    1 __mn_list_push call instead of 5 — only the is_alpha branch
+    survived. All digit/string/char/operator branches were dropped
+    by the Python lowerer's nested-else bug.
+  impact: |
+    The function compiles and runs but handles only a fraction of
+    its input cases. In a tokenizer, this means only identifiers
+    are recognized; numbers, strings, chars, and operators produce
+    no tokens. The binary appears to work (no crash) but its output
+    is empty or incomplete.
+  tags:
+    - bootstrap
+    - stage-divergence
+    - silent-failure
+    - control-flow
+  cwe: CWE-478
+  created: "2025-03-28"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: single_push_in_large_fn
+      pattern:
+        - '__mn_list_push'
+  condition: or
+
+report:
+  format: |
+    Found __mn_list_push call. Count all occurrences in this function
+    and compare against stage1. A significant drop (e.g., 5 → 1)
+    means code branches were silently dropped during self-compilation.
+    Run: culebra diff <stage1.ll> <stage2.ll> --function tokenize
+
+remediation:
+  suggestion: |
+    The Python lowerer drops nested else branches. Workaround: flatten
+    if/else chains into sequential flag-guarded blocks in the .mn source,
+    or extract each branch into a separate helper function.
+  difficulty: complex

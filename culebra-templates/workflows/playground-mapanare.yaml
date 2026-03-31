@@ -1,0 +1,43 @@
+id: playground-mapanare
+info:
+  name: Mapanare v2.2.0 bootstrap playground
+  severity: critical
+  description: |
+    Runs the complete set of templates that would have caught
+    the Mapanare v2.2.0 bootstrap bugs: ABI return-type divergence,
+    dropped else branches, call-count shrinkage, and body truncation.
+    Use with the playground/fixtures/ IR files to see Culebra in action.
+
+    Usage:
+      culebra scan playground/fixtures/stage2-tokenize.ll --tags abi
+      culebra scan playground/fixtures/stage2-tokenize.ll --tags ir
+      culebra scan playground/fixtures/stage2-tokenize.ll --tags bootstrap
+      culebra diff playground/fixtures/stage1-tokenize.ll playground/fixtures/stage2-tokenize.ll
+  tags:
+    - bootstrap
+    - playground
+    - workflow
+    - mapanare
+
+workflow:
+  # Step 1: ABI checks — catch return-type divergence first (TOKS=0 root cause)
+  - templates:
+      tags:
+        - abi
+        - return-type
+    input: "{stage2_output}"
+    stop_on: critical
+
+  # Step 2: IR pathology checks — catch dropped branches
+  - templates:
+      tags:
+        - ir
+        - control-flow
+    input: "{stage2_output}"
+
+  # Step 3: Bootstrap divergence — catch body shrinkage and call-count drops
+  - templates:
+      tags:
+        - bootstrap
+        - stage-divergence
+    input: "{stage2_output}"
