@@ -230,6 +230,11 @@ pub fn parse_ir(text: &str) -> IRModule {
         string_constants: Vec::new(),
     };
 
+    // Guard: empty or trivially small input
+    if text.trim().is_empty() {
+        return module;
+    }
+
     // Struct types
     for caps in STRUCT_RE.captures_iter(text) {
         let name = caps[1].to_string();
@@ -283,13 +288,20 @@ pub fn parse_ir(text: &str) -> IRModule {
         let mut depth: i32 = 1;
         let mut pos = start;
         let text_bytes = text.as_bytes();
-        while pos < text_bytes.len() && depth > 0 {
+        // Safety limit: 50MB of IR per function (prevents hang on malformed input)
+        let max_scan = (start + 50_000_000).min(text_bytes.len());
+        while pos < max_scan && depth > 0 {
             match text_bytes[pos] {
                 b'{' => depth += 1,
                 b'}' => depth -= 1,
                 _ => {}
             }
             pos += 1;
+        }
+
+        // Skip truncated functions (unmatched braces)
+        if depth != 0 {
+            continue;
         }
 
         let body = &text[start..pos.saturating_sub(1)];

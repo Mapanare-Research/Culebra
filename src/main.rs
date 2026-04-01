@@ -308,6 +308,51 @@ enum Commands {
         function: Option<String>,
     },
 
+    /// Pretty-print IR with syntax highlighting, block flow, and function metrics
+    Pretty {
+        /// Path to .ll file
+        file: String,
+        /// Function to pretty-print (omit for module overview)
+        #[arg(long)]
+        function: Option<String>,
+        /// Disable color output
+        #[arg(long)]
+        no_color: bool,
+    },
+
+    /// Dump all variables in a function — allocas, types, def-use chains, PHI inputs
+    Dump {
+        /// Path to .ll file
+        file: String,
+        /// Function name
+        #[arg(long)]
+        function: String,
+        /// Show GEP chains and detailed info
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Parse valgrind/ASAN/gdb crash output and map to IR functions + struct fields
+    Stacktrace {
+        /// Crash output file (or "-" for stdin)
+        input: String,
+        /// IR file for cross-referencing
+        #[arg(long)]
+        ir: Option<String>,
+    },
+
+    /// Walk through a function's basic blocks showing control flow and variable state
+    Inspect {
+        /// Path to .ll file
+        file: String,
+        /// Function name
+        #[arg(long)]
+        function: String,
+        /// Specific block to inspect in detail
+        #[arg(long)]
+        block: Option<String>,
+    },
+
     /// Show call chain between two functions with struct types along the path
     Callchain {
         /// Path to .ll file
@@ -580,6 +625,18 @@ fn main() {
         Commands::Bisect { file_a, file_b, top } => commands::bisect::run(&file_a, &file_b, top),
         Commands::Verify { file, id, function } => {
             commands::verify::run(&file, &id, function.as_deref())
+        }
+        Commands::Pretty { file, function, no_color } => {
+            commands::pretty::run(&file, function.as_deref(), no_color)
+        }
+        Commands::Dump { file, function, verbose } => {
+            commands::dump::run(&file, &function, verbose)
+        }
+        Commands::Stacktrace { input, ir } => {
+            commands::stacktrace::run(&input, ir.as_deref())
+        }
+        Commands::Inspect { file, function, block } => {
+            commands::inspect::run(&file, &function, block.as_deref())
         }
         Commands::Callchain { file, from, to, depth } => {
             commands::callchain::run(&file, &from, &to, depth)
