@@ -401,6 +401,24 @@ enum Commands {
         var: String,
     },
 
+    /// Infer type definitions from insertvalue chains in constructor functions
+    InferTypes {
+        /// Path to .ll file
+        file: String,
+        /// Output as valid LLVM IR (ready to paste into file)
+        #[arg(long)]
+        ll: bool,
+    },
+
+    /// Audit field index usage — find structs where all accesses use index 0
+    FieldIndexAudit {
+        /// Path to .ll file
+        file: String,
+        /// Filter to a specific struct name
+        #[arg(long, name = "struct")]
+        struct_filter: Option<String>,
+    },
+
     /// Find named types used but never defined in the IR
     MissingTypes {
         /// Path to .ll file
@@ -649,6 +667,12 @@ fn main() {
         }
         Commands::Trace { file, function, var } => {
             commands::trace::run(&file, &function, &var)
+        }
+        Commands::InferTypes { file, ll } => {
+            commands::infer_types::run(&file, ll)
+        }
+        Commands::FieldIndexAudit { file, struct_filter } => {
+            commands::field_index_audit::run(&file, struct_filter.as_deref())
         }
         Commands::MissingTypes { file, verbose } => {
             commands::missing_types::run(&file, verbose)
