@@ -1,0 +1,56 @@
+id: undefined-named-type
+info:
+  name: Named struct/enum type used but never defined
+  severity: critical
+  author: juandenis
+  description: |
+    A named type like %struct.ExternFnInfo or %enum.Definition is
+    used in insertvalue, load, store, alloca, or sret, but no
+    type definition (%struct.X = type { ... }) exists in the module.
+    LLVM will reject this IR. In Mapanare v2.2.0, this happened
+    when the self-hosted emitter's struct registration loop missed
+    some types — 19 structs were used but never defined, blocking
+    the entire stage2 compilation.
+  impact: |
+    clang/llvm-as rejects the IR with "invalid indices for insertvalue"
+    or "use of undefined type" errors. The compiler output is unusable
+    until all types are registered.
+  tags:
+    - ir
+    - type-safety
+    - struct
+    - registration
+  cwe: CWE-456
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: insertvalue_undefined
+      pattern:
+        - 'insertvalue %struct\.\w+ undef'
+        - 'insertvalue %enum\.\w+ undef'
+  condition: or
+
+report:
+  format: |
+    insertvalue with a named type that may be undefined.
+    Run 'culebra missing-types <file.ll>' to find all undefined types.
+    Fix: register the type in the MIR module's struct/enum list, or
+    add a manual type definition at the top of the IR file.
+
+remediation:
+  suggestion: |
+    Ensure the self-hosted emitter registers ALL struct and enum types
+    used by the program. Check the emit_mir_module struct/enum registration
+    loops — the loop bound may be too low, or the break bug prevents
+    processing all entries.
+  difficulty: moderate
+
+related:
+  - struct-layout-mismatch
+  - uninitialized-struct-field-access

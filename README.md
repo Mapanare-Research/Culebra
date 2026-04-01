@@ -19,7 +19,7 @@ English | [Espanol](docs/README.es.md) | [中文版](docs/README.zh-CN.md) | [Po
 ![Platform](https://img.shields.io/badge/Linux%20%7C%20macOS%20%7C%20Windows-grey?style=for-the-badge)
 
 [![License](https://img.shields.io/badge/license-MIT-green.svg?style=flat-square)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.6.0-blue.svg?style=flat-square)](Cargo.toml)
+[![Version](https://img.shields.io/badge/version-0.7.0-blue.svg?style=flat-square)](Cargo.toml)
 [![Templates](https://img.shields.io/badge/templates-29_shipped-orange.svg?style=flat-square)]()
 [![GitHub Stars](https://img.shields.io/github/stars/Mapanare-Research/Culebra?style=flat-square&color=f5c542)](https://github.com/Mapanare-Research/Culebra/stargazers)
 

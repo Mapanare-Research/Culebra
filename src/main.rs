@@ -356,6 +356,15 @@ enum Commands {
         var: String,
     },
 
+    /// Find named types used but never defined in the IR
+    MissingTypes {
+        /// Path to .ll file
+        file: String,
+        /// Show which functions reference each missing type
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
     /// Struct health check — find PHI zeroinit, type-pun, null loads
     Health {
         /// Path to .ll file
@@ -583,6 +592,9 @@ fn main() {
         }
         Commands::Trace { file, function, var } => {
             commands::trace::run(&file, &function, &var)
+        }
+        Commands::MissingTypes { file, verbose } => {
+            commands::missing_types::run(&file, verbose)
         }
         Commands::Health { file, struct_name } => {
             commands::health::run(&file, struct_name.as_deref())

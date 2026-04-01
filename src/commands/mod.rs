@@ -16,6 +16,7 @@ pub mod health;
 pub mod init;
 pub mod lint_template;
 pub mod map;
+pub mod missing_types;
 pub mod phi_check;
 pub mod pipeline;
 pub mod progress;
