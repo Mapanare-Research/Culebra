@@ -401,6 +401,66 @@ enum Commands {
         var: String,
     },
 
+    /// Call one IR function via lli/clang and print the return value
+    Eval {
+        /// Path to .ll file
+        file: String,
+        /// Function name to call
+        #[arg(long)]
+        function: String,
+        /// Arguments (strings in quotes, integers, booleans)
+        #[arg(long = "arg")]
+        args: Vec<String>,
+        /// Timeout in seconds
+        #[arg(long, default_value = "10")]
+        timeout: u64,
+        /// Compiler to use for fallback compilation
+        #[arg(long, default_value = "clang")]
+        compiler: String,
+    },
+
+    /// Inject printf probes into IR, compile, run — show variable values at runtime
+    Probe {
+        /// Path to .ll file
+        file: String,
+        /// Function to probe
+        #[arg(long)]
+        function: String,
+        /// Variables to watch (omit for auto-detection)
+        #[arg(long = "watch")]
+        watch: Vec<String>,
+        /// Stop at a specific block label
+        #[arg(long)]
+        stop_at: Option<String>,
+        /// Compiler to use
+        #[arg(long, default_value = "clang")]
+        compiler: String,
+        /// Timeout in seconds
+        #[arg(long, default_value = "10")]
+        timeout: u64,
+    },
+
+    /// Unit test one IR function — compile, run, check return value
+    TestFn {
+        /// Path to .ll file
+        file: String,
+        /// Function name
+        #[arg(long)]
+        function: String,
+        /// Arguments
+        #[arg(long = "arg")]
+        args: Vec<String>,
+        /// Expected return value (fail if different)
+        #[arg(long)]
+        expect_ret: Option<i64>,
+        /// Compiler to use
+        #[arg(long, default_value = "clang")]
+        compiler: String,
+        /// Timeout in seconds
+        #[arg(long, default_value = "10")]
+        timeout: u64,
+    },
+
     /// Run everything: triage + missing-types + field-index-audit + health in one command
     Summary {
         /// Path to .ll file
@@ -676,6 +736,15 @@ fn main() {
         }
         Commands::Trace { file, function, var } => {
             commands::trace::run(&file, &function, &var)
+        }
+        Commands::Eval { file, function, args, timeout, compiler } => {
+            commands::eval::run(&file, &function, &args, timeout, &compiler)
+        }
+        Commands::Probe { file, function, watch, stop_at, compiler, timeout } => {
+            commands::probe::run(&file, &function, &watch, stop_at.as_deref(), &compiler, timeout)
+        }
+        Commands::TestFn { file, function, args, expect_ret, compiler, timeout } => {
+            commands::test_fn::run(&file, &function, &args, expect_ret, &compiler, timeout)
         }
         Commands::Summary { file, struct_filter } => {
             commands::summary::run(&file, struct_filter.as_deref())
