@@ -1,0 +1,62 @@
+id: substr-empty-result
+info:
+  name: String operation produces empty result due to C runtime substr bug
+  severity: high
+  author: juandenis
+  description: |
+    The C runtime __mn_str_substr(s, start, len) has a bug where
+    substr with start > 0 can return an empty string instead of
+    the expected substring. This manifests in the IR as string
+    comparisons that always fail (comparing against empty string)
+    or field name lookups that return default values.
+    In Mapanare v2.2.0, find_list_field_index called substr to
+    extract the field name after ":", got empty string, and
+    returned index 0 for all fields.
+  impact: |
+    String-based lookups silently fail. Field name → index mapping
+    returns 0 for everything. Struct field accesses use wrong
+    indices. The emitter generates valid-looking IR that accesses
+    completely wrong data.
+  tags:
+    - ir
+    - string
+    - runtime-bug
+    - field-index
+    - silent-failure
+  cwe: CWE-135
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: substr_call
+      pattern:
+        - '@__mn_str_substr\('
+        - '@__mn_str_find\('
+  condition: or
+
+report:
+  format: |
+    String substr/find call detected. If this is used for field name
+    extraction (e.g., "StructName:field" → "field"), the C runtime
+    substr bug may return empty string for start > 0.
+    Workaround: use char-by-char extraction instead of substr.
+
+remediation:
+  suggestion: |
+    Replace substr calls with char-by-char string builders:
+      fn extract_after_colon(s: String, pos: Int) -> String {
+        let mut result = ""
+        let mut i = pos + 1
+        for _ in 0..200 { if i >= len(s) { return result }; result = result + s.char_at(i); i = i + 1 }
+        return result
+      }
+  difficulty: moderate
+
+related:
+  - field-index-always-zero
+  - byte-count-mismatch

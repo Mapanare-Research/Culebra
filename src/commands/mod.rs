@@ -31,6 +31,7 @@ pub mod stacktrace;
 pub mod status;
 pub mod strings;
 pub mod suggest;
+pub mod summary;
 pub mod table;
 pub mod templates_cmd;
 pub mod test;

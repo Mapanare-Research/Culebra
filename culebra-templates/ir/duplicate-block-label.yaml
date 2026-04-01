@@ -1,0 +1,47 @@
+id: duplicate-block-label
+info:
+  name: Duplicate basic block label in function
+  severity: high
+  author: juandenis
+  description: |
+    Two basic blocks in the same function have the same label name.
+    LLVM silently uses the first definition, making the second
+    block unreachable. This happens when the emitter's fresh_label
+    counter resets or when two code paths generate the same label.
+  impact: |
+    The second block's code is dead — branches targeting it go to
+    the first block instead. Control flow is silently wrong.
+  tags:
+    - ir
+    - control-flow
+    - label
+    - dead-code
+  cwe: CWE-561
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: block_label
+      pattern:
+        - '^[a-zA-Z_]\w+\d+:'
+  condition: or
+
+report:
+  format: |
+    Basic block label found. Check for duplicates within the same
+    function using: culebra inspect <file.ll> --function <name>
+    Duplicate labels cause the second block to be silently dead.
+
+remediation:
+  suggestion: |
+    Ensure the emitter uses a monotonically increasing counter for
+    label generation. Each function should have unique block labels.
+  difficulty: simple
+
+related:
+  - unreachable-after-branch

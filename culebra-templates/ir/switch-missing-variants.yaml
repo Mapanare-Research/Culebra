@@ -1,0 +1,52 @@
+id: switch-missing-variants
+info:
+  name: Switch statement has suspiciously few cases for an enum
+  severity: medium
+  author: juandenis
+  description: |
+    A switch on an enum tag has fewer cases than expected. If the
+    enum has N variants but the switch only handles M < N, the
+    remaining variants silently fall to the default arm. This may
+    be intentional (default handles remaining cases) or a bug
+    (some match arms were dropped during compilation).
+  impact: |
+    Unmatched variants hit the default arm, which may return
+    zeroinitializer, do nothing, or crash. In self-hosted compilers,
+    this causes some AST nodes to be silently ignored.
+  tags:
+    - ir
+    - control-flow
+    - switch
+    - enum
+  cwe: CWE-478
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: small_switch
+      pattern:
+        - 'switch i64 %.+, label %\w+ \[\s*$'
+        - 'switch i64 %.+, label %\w+ \[\s*i64 \d+, label %\w+\s*\]'
+  condition: or
+
+report:
+  format: |
+    Switch with very few cases (possibly 0 or 1). If this dispatches
+    on an enum tag, check that all variants are handled.
+    Compare case count against the enum definition.
+
+remediation:
+  suggestion: |
+    Verify the enum has the expected number of variants. If cases
+    are missing, the match statement in .mn source may have dropped
+    arms during compilation. Check for the break/else bug pattern.
+  difficulty: moderate
+
+related:
+  - empty-switch-body
+  - dropped-else-branch

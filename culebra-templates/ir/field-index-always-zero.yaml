@@ -1,0 +1,55 @@
+id: field-index-always-zero
+info:
+  name: All extractvalue/GEP accesses on a struct use index 0
+  severity: critical
+  author: juandenis
+  description: |
+    Every field access on a named struct type uses index 0 instead
+    of the correct field index. This happens when find_field_index
+    can't find the struct in the registry and returns 0 as default.
+    In Mapanare v2.2.0, 18 unregistered structs caused ALL field
+    accesses on LowerState, EmitState, MIRModule etc. to read
+    field 0 (MIRModule/lines list) instead of the intended field.
+  impact: |
+    Every field read returns the wrong data. tmp_counter reads
+    MIRModule, current_block_idx reads MIRModule, vars reads
+    MIRModule. The cascade corrupts every downstream operation.
+    Crashes appear in unrelated functions that read the wrong fields.
+  tags:
+    - ir
+    - struct
+    - field-index
+    - silent-failure
+    - registration
+  cwe: CWE-843
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: extractvalue_zero
+      pattern:
+        - 'extractvalue %struct\.\w+ %.+, 0'
+  condition: or
+
+report:
+  format: |
+    extractvalue on a named struct at index 0. If ALL accesses on
+    this struct use index 0, find_field_index is likely returning 0
+    because the struct is not registered.
+    Run: culebra field-index-audit <file.ll> to check.
+
+remediation:
+  suggestion: |
+    Ensure the struct is registered in the MIR module's struct list.
+    If find_field_index returns 0 as default, the struct is missing
+    from the emitter's struct_infos registry.
+  difficulty: moderate
+
+related:
+  - undefined-named-type
+  - uninitialized-struct-field-access

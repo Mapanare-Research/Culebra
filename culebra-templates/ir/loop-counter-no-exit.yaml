@@ -1,0 +1,56 @@
+id: loop-counter-no-exit
+info:
+  name: For-loop body has no branch to for_exit
+  severity: high
+  author: juandenis
+  description: |
+    A for-loop body block has no successor that reaches for_exit.
+    The loop runs to its maximum iteration count instead of exiting
+    early. Different from break-inside-nested-control (which catches
+    break-in-if-in-for); this catches loops where the ONLY exit
+    path was through a break that was entirely removed.
+  impact: |
+    Loop runs to max count (often 1000 or 100000). With safe
+    list_get this wastes time; without it, causes null dereferences
+    and stack overflow from accumulated allocas.
+  tags:
+    - ir
+    - control-flow
+    - loop
+    - infinite-loop
+  cwe: CWE-835
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: for_body
+      pattern: '^for_body\w*:'
+      capture: {}
+
+    - id: no_exit_branch
+      type: absent
+      pattern: 'br label %for_exit'
+      after: for_body
+      within_lines: 50
+
+  condition: all
+
+report:
+  format: |
+    for_body block has no branch to for_exit within 50 lines.
+    The loop will run to its maximum iteration count.
+    Check if all exit conditions (break/return) were dropped.
+
+remediation:
+  suggestion: |
+    Extract the loop body to a helper function that uses return
+    instead of break. Or add a flag-based exit pattern.
+  difficulty: moderate
+
+related:
+  - break-inside-nested-control

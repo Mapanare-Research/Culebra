@@ -1,0 +1,52 @@
+id: function-pointer-null-call
+info:
+  name: Call through null or likely-null function pointer
+  severity: critical
+  author: juandenis
+  description: |
+    A call instruction targets null or a value loaded from an
+    uninitialized/zeroed pointer. This causes SIGSEGV at address 0.
+    Common when internal-linkage functions are eliminated by LLVM
+    -O1 DCE, or when function pointers are stored in zeroinitializer
+    structs.
+  impact: |
+    Immediate crash (SIGSEGV at 0x0) when the call executes.
+    The crash occurs in the CALLER, not at the definition site,
+    making it hard to trace back to the missing function.
+  tags:
+    - abi
+    - function-pointer
+    - null
+    - crash
+  cwe: CWE-476
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: call_null
+      pattern:
+        - 'call .+ null\('
+        - 'call void null\('
+  condition: or
+
+report:
+  format: |
+    Call through null function pointer detected. This will crash
+    with SIGSEGV at address 0x0. Check if the function was
+    eliminated by LLVM DCE or if the pointer was zeroinitializer'd.
+
+remediation:
+  suggestion: |
+    If caused by internal linkage DCE, remove 'internal' from the
+    function definition. If caused by zeroinitializer, ensure the
+    struct containing the function pointer is properly initialized.
+  difficulty: moderate
+
+related:
+  - internal-linkage-dce
+  - match-phi-zeroinit-corruption

@@ -1,0 +1,60 @@
+id: sret-zeroinitializer-return
+info:
+  name: sret function stores zeroinitializer to return pointer
+  severity: critical
+  author: juandenis
+  description: |
+    A function with sret return convention stores zeroinitializer
+    to %__sret__ in a merge/default block. This zeros the entire
+    return struct, losing all accumulated state. In Mapanare v2.2.0,
+    register_nonenums had match_merge0: store zeroinitializer to
+    %sret, wiping the accumulated struct registrations on every
+    call through the default match arm.
+  impact: |
+    The caller receives a zeroed struct. All previously accumulated
+    data (list entries, counters, flags) is lost. Since the struct
+    looks valid (just zeroed), the crash occurs much later when
+    a null field is dereferenced.
+  tags:
+    - abi
+    - sret
+    - zeroinitializer
+    - state-corruption
+    - match
+  cwe: CWE-824
+  created: "2025-03-31"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  type: sequence
+  steps:
+    - id: merge_label
+      pattern: '^match_merge\w*:'
+      capture: {}
+
+    - id: zeroinit_sret
+      pattern: 'store %struct\.\w+ zeroinitializer, ptr %__sret__'
+      after: merge_label
+      within_lines: 5
+
+  condition: all
+
+report:
+  format: |
+    match_merge block stores zeroinitializer to sret return pointer.
+    The default match arm returns a zeroed struct, losing all state.
+    This is the systemic match-PHI bug applied to sret returns.
+
+remediation:
+  suggestion: |
+    Ensure the default match arm returns the input state unchanged:
+      match_default: store %struct.State %input_state, ptr %__sret__
+    Or restructure the match to use helper functions.
+  difficulty: moderate
+
+related:
+  - match-phi-zeroinit-corruption
+  - option-type-pun-zeroinit

@@ -401,6 +401,15 @@ enum Commands {
         var: String,
     },
 
+    /// Run everything: triage + missing-types + field-index-audit + health in one command
+    Summary {
+        /// Path to .ll file
+        file: String,
+        /// Filter health checks to a specific struct
+        #[arg(long, name = "struct")]
+        struct_filter: Option<String>,
+    },
+
     /// Infer type definitions from insertvalue chains in constructor functions
     InferTypes {
         /// Path to .ll file
@@ -667,6 +676,9 @@ fn main() {
         }
         Commands::Trace { file, function, var } => {
             commands::trace::run(&file, &function, &var)
+        }
+        Commands::Summary { file, struct_filter } => {
+            commands::summary::run(&file, struct_filter.as_deref())
         }
         Commands::InferTypes { file, ll } => {
             commands::infer_types::run(&file, ll)
