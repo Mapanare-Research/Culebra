@@ -541,6 +541,32 @@ enum Commands {
         action: TemplatesAction,
     },
 
+    /// Proxy a command — run it, pass output through, log everything for later analysis
+    Wrap {
+        /// Log file path
+        #[arg(long, default_value = ".culebra-session.jsonl")]
+        log: String,
+        /// Command and arguments (use -- before the command)
+        #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
+        command: Vec<String>,
+    },
+
+    /// Analyze session logs for error patterns and suggest templates
+    Learn {
+        /// Path to session log file
+        #[arg(default_value = ".culebra-session.jsonl")]
+        log_file: Option<String>,
+        /// Show individual failure details
+        #[arg(short, long)]
+        verbose: bool,
+    },
+
+    /// Debug journal — log bugs, fixes, milestones; query history
+    Journal {
+        #[command(subcommand)]
+        action: JournalAction,
+    },
+
     /// Run a multi-step scan workflow
     Workflow {
         /// Workflow ID to run
@@ -586,6 +612,35 @@ enum BaselineAction {
         /// Path to baseline file
         #[arg(long, short)]
         baseline: Option<String>,
+    },
+}
+
+#[derive(Subcommand)]
+enum JournalAction {
+    /// Add a journal entry
+    Add {
+        /// Entry message
+        message: String,
+        /// Entry type: note, bug, fix, milestone
+        #[arg(long, default_value = "note")]
+        action: String,
+        /// Tags (comma-separated)
+        #[arg(long)]
+        tags: Option<String>,
+        /// Related IR file
+        #[arg(long)]
+        ir: Option<String>,
+        /// Related function
+        #[arg(long)]
+        function: Option<String>,
+    },
+    /// Show journal entries
+    Show {
+        /// Search query (filters by message, action, tags, function)
+        query: Option<String>,
+        /// Show last N entries
+        #[arg(long, default_value = "20")]
+        last: usize,
     },
 }
 
@@ -775,6 +830,23 @@ fn main() {
         Commands::LintTemplate { file, id, expect, reject } => {
             commands::lint_template::run(&file, &id, expect, reject)
         }
+        Commands::Wrap { log, command } => {
+            commands::wrap::run(&command, Some(&log))
+        }
+        Commands::Learn { log_file, verbose } => {
+            commands::learn::run(log_file.as_deref(), verbose)
+        }
+        Commands::Journal { action } => match action {
+            JournalAction::Add { message, action, tags, ir, function } => {
+                let tag_list: Vec<String> = tags
+                    .map(|t| t.split(',').map(|s| s.trim().to_string()).collect())
+                    .unwrap_or_default();
+                commands::journal::run_add(&action, &message, &tag_list, ir.as_deref(), function.as_deref(), None)
+            }
+            JournalAction::Show { query, last } => {
+                commands::journal::run_show(query.as_deref(), None, last)
+            }
+        },
         Commands::Templates { action } => match action {
             TemplatesAction::List { tags } => {
                 let tag_list: Vec<String> = tags
