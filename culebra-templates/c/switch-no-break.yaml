@@ -1,0 +1,42 @@
+id: switch-no-break
+info:
+  name: Switch case falls through without break
+  severity: high
+  author: juandenis
+  description: |
+    A switch case block does not end with break, return, or goto.
+    In C, this causes fallthrough to the next case. In generated C
+    from a compiler, fallthrough is almost always a bug — the emitter
+    should emit break at the end of every case.
+  impact: |
+    Multiple match arms execute when only one should. The wrong
+    variant handler runs, corrupting state or producing wrong output.
+  tags:
+    - c
+    - control-flow
+    - switch
+    - fallthrough
+  cwe: CWE-484
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: case_without_break
+      pattern:
+        - 'case \d+:'
+  condition: or
+
+report:
+  format: |
+    Switch case found. Verify each case ends with break/return/goto.
+    In generated C from Mapanare, every match arm should have explicit
+    break to prevent fallthrough.
+
+remediation:
+  suggestion: "Add break; at the end of each case block in the emitter."
+  difficulty: simple

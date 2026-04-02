@@ -1,0 +1,42 @@
+id: union-tag-mismatch
+info:
+  name: Enum union accessed with potentially wrong tag value
+  severity: critical
+  author: juandenis
+  description: |
+    An enum struct's union data is accessed without the switch/if
+    checking the exact tag value that corresponds to that union member.
+    In generated C, each enum variant maps to a specific tag integer.
+    Accessing .data.SomeVariant when .tag != SOME_VARIANT reads garbage.
+  impact: |
+    Union type punning reads unrelated bytes as the wrong type.
+    Pointers become invalid addresses, integers become wrong values.
+    Crashes or silent data corruption.
+  tags:
+    - c
+    - enum
+    - union
+    - type-safety
+  cwe: CWE-843
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: tag_switch
+      pattern:
+        - 'switch\s*\(\s*\w+\.tag\s*\)'
+  condition: or
+
+report:
+  format: |
+    Switch on enum tag found. Verify each case accesses only the
+    union member that corresponds to its tag value.
+
+remediation:
+  suggestion: "Ensure case N accesses .data.variant_N, never a different variant."
+  difficulty: moderate

@@ -31,9 +31,15 @@ pub struct Finding {
 // ---------------------------------------------------------------------------
 
 pub fn run_template(template: &Template, module: &IRModule) -> Vec<Finding> {
-    if template.scope.file_type != FileType::LlvmIr {
+    if template.scope.file_type != FileType::LlvmIr
+        && template.scope.file_type != FileType::CSource
+    {
         return Vec::new();
     }
+
+    // For C source templates on an IR module with no functions (raw text),
+    // force section to All so regex matchers work on the full source.
+    // This allows C templates to scan .c files loaded as raw text.
 
     let mut findings = Vec::new();
 

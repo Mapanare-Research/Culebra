@@ -1,6 +1,7 @@
 use colored::Colorize;
 
 use crate::ir;
+use crate::c_parser;
 use crate::template::engine::{self, Finding};
 use crate::template::loader;
 use crate::template::report::{self, OutputFormat};
@@ -64,8 +65,15 @@ pub fn run(
         }
     };
 
-    // Parse IR
-    let module = ir::parse_ir(&content);
+    // Parse IR or C based on file extension
+    let is_c = file.ends_with(".c") || file.ends_with(".h");
+    let module = if is_c {
+        // For C files, create an IRModule from the C source so regex templates work
+        // The C parser extracts functions/structs, but templates match on raw text
+        ir::parse_ir_from_raw(&content)
+    } else {
+        ir::parse_ir(&content)
+    };
 
     // Read header file if provided (for cross-reference templates)
     let header_content = header.and_then(|h| std::fs::read_to_string(h).ok());
@@ -81,6 +89,13 @@ pub fn run(
     let mut all_findings: Vec<Finding> = Vec::new();
 
     for template in &templates {
+        // Skip templates that don't match the file type
+        if is_c && template.scope.file_type == FileType::LlvmIr {
+            continue;
+        }
+        if !is_c && template.scope.file_type == FileType::CSource {
+            continue;
+        }
         if template.scope.file_type == FileType::CrossReference {
             if let Some(ref hdr) = header_content {
                 let findings =

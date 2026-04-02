@@ -1,3 +1,4 @@
+mod c_parser;
 mod commands;
 mod ir;
 mod template;

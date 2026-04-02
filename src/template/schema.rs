@@ -104,6 +104,7 @@ impl Default for Scope {
 #[serde(rename_all = "kebab-case")]
 pub enum FileType {
     LlvmIr,
+    CSource,
     ElfBinary,
     CHeader,
     CrossReference,

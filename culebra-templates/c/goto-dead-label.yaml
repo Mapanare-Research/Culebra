@@ -1,0 +1,41 @@
+id: goto-dead-label
+info:
+  name: Goto target label may be unreachable or missing
+  severity: medium
+  author: juandenis
+  description: |
+    A goto statement targets a label. In generated C from the
+    Mapanare C backend, gotos replace LLVM's branch instructions.
+    If a label is missing or unreachable, the goto creates
+    undefined behavior.
+  impact: |
+    gcc emits "label used but not defined" error, or the code
+    jumps to an unexpected location.
+  tags:
+    - c
+    - control-flow
+    - goto
+    - dead-code
+  cwe: CWE-561
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: goto_stmt
+      pattern:
+        - '\bgoto \w+;'
+  condition: or
+
+report:
+  format: |
+    Goto statement found. Verify the target label exists in the
+    same function and is reachable.
+
+remediation:
+  suggestion: "Check that all goto labels are defined. Use culebra inspect to view control flow."
+  difficulty: simple

@@ -1,0 +1,43 @@
+id: c-buffer-overflow-pattern
+info:
+  name: Array access without bounds check in generated C
+  severity: high
+  author: juandenis
+  description: |
+    Array or buffer access in generated C without a preceding bounds
+    check. In generated C from Mapanare, list element access should
+    go through __mn_list_get (which has bounds checking), not direct
+    array indexing.
+  impact: |
+    Out-of-bounds read/write. Buffer overflow leading to memory
+    corruption, crashes, or security vulnerabilities.
+  tags:
+    - c
+    - memory-safety
+    - buffer-overflow
+    - array
+  cwe: CWE-120
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: direct_array_access
+      pattern:
+        - '\w+\[.+\]\s*='
+        - '=\s*\w+\[.+\]'
+  condition: or
+
+report:
+  format: |
+    Direct array access found. In generated C from Mapanare, list
+    access should use __mn_list_get/__mn_list_set with bounds checking.
+    Direct indexing bypasses safety checks.
+
+remediation:
+  suggestion: "Use runtime list access functions instead of direct array indexing."
+  difficulty: moderate

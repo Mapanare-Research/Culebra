@@ -64,6 +64,19 @@ pub struct IRModule {
     pub string_constants: Vec<StringConstant>,
 }
 
+/// Create a minimal IRModule from raw text (for C files or other non-IR).
+/// Templates can still match on the source text using regex matchers.
+pub fn parse_ir_from_raw(text: &str) -> IRModule {
+    IRModule {
+        source: text.to_string(),
+        functions: HashMap::new(),
+        declares: Vec::new(),
+        globals: Vec::new(),
+        struct_types: Vec::new(),
+        string_constants: Vec::new(),
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Pathology — a detected issue in the IR
 // ---------------------------------------------------------------------------

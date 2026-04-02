@@ -1,0 +1,39 @@
+id: missing-typedef
+info:
+  name: Struct type used but not defined with typedef
+  severity: critical
+  author: juandenis
+  description: |
+    A struct type name is used in function signatures or variable
+    declarations but no typedef or struct definition exists for it.
+    The C equivalent of ir/undefined-named-type.
+  impact: |
+    gcc/clang rejects the file with "unknown type name" or
+    "incomplete type" errors. The generated C is unusable.
+  tags:
+    - c
+    - type-safety
+    - typedef
+  cwe: CWE-456
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: typedef_struct
+      pattern:
+        - 'typedef struct'
+  condition: or
+
+report:
+  format: |
+    Typedef found. Run 'culebra missing-types <file.c>' to check
+    all types are properly defined before use.
+
+remediation:
+  suggestion: "Ensure all struct types are forward-declared or typedef'd before use."
+  difficulty: moderate

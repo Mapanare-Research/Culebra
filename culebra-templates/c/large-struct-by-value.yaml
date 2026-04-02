@@ -1,0 +1,41 @@
+id: c-large-struct-by-value
+info:
+  name: Large struct passed by value in C function
+  severity: medium
+  author: juandenis
+  description: |
+    A function parameter or return type is a large struct (>16 bytes)
+    passed by value. In generated C, this causes expensive memcpy
+    on every call. The emitter should pass large structs by pointer.
+  impact: |
+    Performance degradation from unnecessary struct copies. For very
+    large structs (>1KB), can cause stack overflow in deep call chains.
+  tags:
+    - c
+    - abi
+    - struct
+    - performance
+  cwe: CWE-400
+  created: "2026-04-01"
+
+scope:
+  file_type: c-source
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      name: struct_param
+      pattern:
+        - '\bMn\w+\s+\w+[,)]'
+        - '\bstruct\s+\w+\s+\w+[,)]'
+  condition: or
+
+report:
+  format: |
+    Struct passed by value in function parameter. If >16 bytes,
+    consider passing by pointer for performance.
+
+remediation:
+  suggestion: "Pass large structs (>16 bytes) by pointer: fn(Type* param) instead of fn(Type param)."
+  difficulty: simple
