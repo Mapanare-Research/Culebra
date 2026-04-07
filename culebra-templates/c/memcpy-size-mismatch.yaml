@@ -1,0 +1,36 @@
+id: c-memcpy-size-mismatch
+info:
+  name: memcpy source/dest size mismatch in generated C
+  severity: critical
+  description: |
+    A memcpy call copies N bytes from a region of size M where N != M.
+    In compiler-generated C, this means the emitter assigned the wrong
+    type to a variable — typically an enum/struct return stored as int64_t.
+  tags: [c, abi, memcpy, type-mismatch]
+
+scope:
+  file_type: c-source
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      pattern:
+        - 'memcpy\s*\(\s*&\w+,\s*&\w+,\s*sizeof\(\w+\)\)'
+  condition: or
+
+report:
+  format: |
+    memcpy size mismatch: source and destination types have different sizes.
+    The C emitter likely assigned int64_t to a variable that holds a larger struct.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Fix the C emitter to use the correct type for the destination variable.
+    The sizeof() in the memcpy should match both source and destination sizes.
+  difficulty: moderate
+
+related:
+  - struct-layout-mismatch
+  - ret-type-mismatch

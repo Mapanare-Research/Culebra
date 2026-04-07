@@ -33,7 +33,11 @@ match:
     - type: regex
       name: struct_return_on_runtime_fn
       pattern:
-        - 'declare \{[^}]+\} @__mn_'
+        # Only match runtime functions that the C runtime returns as ptr/void*.
+        # Exclude legitimate struct returns: strings ({ptr, i64}), lists ({ptr, i64, i64, i64}).
+        - 'declare \{i64,\s*i64\} @__mn_(?!str_|list_|array_|map_|set_)'
+        - 'declare \{i64\} @__mn_'
+        - 'declare \{ptr\} @__mn_(?!str_|list_|array_|map_|set_)'
       extractor:
         name: function_decl
         group: 0

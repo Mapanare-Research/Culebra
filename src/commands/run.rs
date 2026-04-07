@@ -9,6 +9,7 @@ pub fn run(
     timeout: u64,
     clang_flags: Option<&str>,
     runtime: Option<&str>,
+    grep_ir: Option<&str>,
 ) -> i32 {
     println!("{}\n", "=== Compile & Run ===".bold());
 
@@ -40,6 +41,38 @@ pub fn run(
             return 1;
         }
     };
+
+    // Step 1b: Grep IR for pattern if requested
+    if let Some(pattern) = grep_ir {
+        println!("   Grepping IR for {:?}...", pattern);
+        let matched: Vec<_> = ir_text
+            .lines()
+            .enumerate()
+            .filter(|(_, line)| line.contains(pattern))
+            .collect();
+        if matched.is_empty() {
+            println!("   {} no matches for {:?}", "FAIL".red().bold(), pattern);
+            return 1;
+        } else {
+            println!(
+                "   {} {} match(es) for {:?}",
+                "PASS".green().bold(),
+                matched.len(),
+                pattern
+            );
+            for (i, (ln, line)) in matched.iter().enumerate() {
+                if i >= 10 {
+                    println!("   ... and {} more", matched.len() - 10);
+                    break;
+                }
+                println!("   L{}: {}", ln + 1, line.trim());
+            }
+        }
+        // If no --expect, the user only cares about IR content — skip linking/execution
+        if expect.is_none() {
+            return 0;
+        }
+    }
 
     // Step 2: Validate IR
     print!("2. Validating IR... ");

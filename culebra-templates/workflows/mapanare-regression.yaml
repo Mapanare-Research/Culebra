@@ -1,0 +1,44 @@
+id: mapanare-regression
+info:
+  name: Mapanare regression suite
+  severity: critical
+  description: |
+    Runs the full Mapanare regression diagnostic set against stage IR.
+    Covers IR validation, enum/struct integrity, new pattern detection,
+    and bootstrap health checks.
+  tags:
+    - bootstrap
+    - workflow
+    - mapanare
+
+workflow:
+  # Step 1: IR validation (byte-count, ret-type, duplicate-block-label)
+  - templates:
+      tags:
+        - ir
+        - string
+    input: "{stage}"
+    stop_on: critical
+
+  # Step 2: Enum/struct integrity
+  - templates:
+      ids:
+        - enum-payload-slot-undercount
+        - phi-operand-type-mismatch
+        - match-phi-zeroinit-corruption
+    input: "{stage}"
+    stop_on: critical
+
+  # Step 3: New patterns (insertvalue, PHI forward-ref)
+  - templates:
+      ids:
+        - insertvalue-type-disagree
+        - phi-forward-ref-type-mismatch
+    input: "{stage}"
+
+  # Step 4: Bootstrap health (field-index, undefined types)
+  - templates:
+      ids:
+        - field-index-always-zero
+        - undefined-named-type
+    input: "{stage}"

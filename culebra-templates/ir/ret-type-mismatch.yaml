@@ -16,22 +16,26 @@ info:
     - type-safety
   cwe: CWE-843
   created: "2025-03-28"
+  updated: "2026-04-06"
 
 scope:
   file_type: llvm-ir
   section: functions
 
 match:
-  matchers:
-    - type: regex
-      name: ret_void_in_nonvoid
-      pattern:
-        - '^\s*ret void'
-  condition: or
+  sequence:
+    - id: nonvoid_fn
+      pattern: 'define\s+(?!void\b)\S+.*@\w+'
+      absent: false
+    - id: ret_void
+      pattern: '^\s*ret void'
+      after: nonvoid_fn
+      within_lines: 5000
+  condition: and
 
 report:
   format: |
-    Function returns void but may have a non-void return type.
+    Function has a non-void return type but contains 'ret void'.
     Run 'culebra audit <file>' for precise ret/signature matching.
 
 remediation:

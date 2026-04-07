@@ -9,6 +9,7 @@ pub fn run(
     max_iters: usize,
     timeout: u64,
     runtime: Option<&str>,
+    build_cmd: Option<&str>,
 ) -> i32 {
     println!("{}\n", "=== Fixed-Point Detection ===".bold());
     println!("Compiler: {compiler}");
@@ -146,17 +147,27 @@ pub fn run(
                 return 1;
             }
 
-            let mut clang = Command::new("clang");
-            clang
-                .arg("-O0")
-                .arg("-Wno-override-module")
-                .arg(ll_path.to_str().unwrap());
-            if let Some(rt) = runtime {
-                clang.arg(rt);
-            }
-            clang.arg("-o").arg(bin_path.to_str().unwrap()).arg("-lm");
+            let build_result = if let Some(cmd_template) = build_cmd {
+                // Custom build command: replace {ir} and {output} placeholders
+                let cmd = cmd_template
+                    .replace("{ir}", ll_path.to_str().unwrap())
+                    .replace("{output}", bin_path.to_str().unwrap());
+                Command::new("bash").arg("-c").arg(&cmd).output()
+            } else {
+                // Default: clang -O0 linking
+                let mut clang = Command::new("clang");
+                clang
+                    .arg("-O0")
+                    .arg("-Wno-override-module")
+                    .arg(ll_path.to_str().unwrap());
+                if let Some(rt) = runtime {
+                    clang.arg(rt);
+                }
+                clang.arg("-o").arg(bin_path.to_str().unwrap()).arg("-lm");
+                clang.output()
+            };
 
-            match clang.output() {
+            match build_result {
                 Ok(output) if output.status.success() => {
                     let size = std::fs::metadata(&bin_path).map(|m| m.len()).unwrap_or(0);
                     println!("{} ({} bytes)", "OK".green().bold(), size);

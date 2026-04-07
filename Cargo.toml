@@ -1,6 +1,6 @@
 [package]
 name = "culebra"
-version = "2.0.0"
+version = "2.1.2"
 edition = "2021"
 authors = ["Juan Denis <juan@vene.co>"]
 description = "Compiler forge — ABI, IR, binary, and bootstrap diagnostics for self-hosting compilers"

@@ -128,6 +128,9 @@ enum Commands {
         /// Path to C runtime to link
         #[arg(long)]
         runtime: Option<String>,
+        /// Grep IR text for pattern (assert it appears)
+        #[arg(long)]
+        grep_ir: Option<String>,
     },
 
     /// Run all [[tests]] from culebra.toml — compile, execute, diff output
@@ -187,6 +190,10 @@ enum Commands {
         /// Path to C runtime to link
         #[arg(long)]
         runtime: Option<String>,
+        /// Custom build command template (replaces default clang linking).
+        /// Use {ir} for IR file path, {output} for binary output path.
+        #[arg(long)]
+        build_cmd: Option<String>,
     },
 
     /// Initialize a culebra.toml config for a compiler project
@@ -690,6 +697,7 @@ fn main() {
             timeout,
             clang_flags,
             runtime,
+            grep_ir,
         } => commands::run::run(
             &compiler,
             &source,
@@ -697,6 +705,7 @@ fn main() {
             timeout,
             clang_flags.as_deref(),
             runtime.as_deref(),
+            grep_ir.as_deref(),
         ),
         Commands::Test {
             config,
@@ -712,7 +721,8 @@ fn main() {
             max_iters,
             timeout,
             runtime,
-        } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref()),
+            build_cmd,
+        } => commands::fixedpoint::run(&compiler, &source, max_iters, timeout, runtime.as_deref(), build_cmd.as_deref()),
         Commands::Init => commands::init::run(),
         Commands::Map { query, all } => {
             let q = query.join(" ");

@@ -1,0 +1,38 @@
+id: phi-forward-ref-type-mismatch
+info:
+  name: PHI forward reference with wrong type
+  severity: high
+  description: |
+    A PHI node references a value that is defined later with a different
+    type. Typically the PHI uses i64 as a placeholder but the actual
+    definition produces a struct or list type. This passes IR generation
+    but fails llvm-as validation.
+  tags: [ir, phi, forward-ref, type-mismatch]
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      pattern:
+        - 'phi\s+i64\s+\[.*%(?:match_result|t)\d+.*\]'
+  condition: or
+
+report:
+  format: |
+    PHI node uses i64 but references a value that may resolve to a
+    different type. This will cause llvm-as to reject the IR.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Fix the emitter to track the actual type of PHI operands rather than
+    defaulting to i64. Forward references must carry the correct type
+    from the beginning.
+  difficulty: hard
+
+related:
+  - phi-operand-type-mismatch
+  - match-phi-zeroinit-corruption

@@ -1,0 +1,38 @@
+id: insertvalue-type-disagree
+info:
+  name: insertvalue operand type doesn't match struct field
+  severity: critical
+  description: |
+    An insertvalue instruction inserts a value whose type differs from
+    the aggregate's field type at that index. Common in enum constructors
+    where Option<T> ({i1, ptr}) is inserted into a field expecting the
+    unwrapped type.
+  tags: [ir, type-mismatch, insertvalue, enum]
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      pattern:
+        - 'insertvalue\s+%(?:struct|enum)\.\w+\s+.*,\s+\{[^}]+\}\s+%\w+,\s+\d+'
+  condition: or
+
+report:
+  format: |
+    insertvalue operand and field disagree in type. The inserted value is a
+    composite type being placed into a field that expects a different type.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Fix the emitter's enum/Option constructor to match the aggregate field
+    type at that index. Ensure Option<T> is unwrapped before insertion if
+    the field expects T, not Option<T>.
+  difficulty: moderate
+
+related:
+  - phi-operand-type-mismatch
+  - ret-type-mismatch
