@@ -229,6 +229,32 @@ enum Commands {
         dry_run: bool,
     },
 
+    /// Fast CI scan — critical + high only, one-line output, no remediation
+    QuickScan {
+        /// Path to .ll or .c file
+        file: String,
+        /// Path to custom template directory
+        #[arg(long)]
+        template: Option<String>,
+    },
+
+    /// Apply source-level quick-fixes for a specific template
+    Fix {
+        /// Path to .ll or .c file
+        file: String,
+        /// Template ID to fix (e.g. byte-count-mismatch)
+        template_id: String,
+        /// Show fixes without applying
+        #[arg(long)]
+        dry_run: bool,
+        /// Prompt y/n for each fix
+        #[arg(long)]
+        interactive: bool,
+        /// Path to custom template directory
+        #[arg(long)]
+        template: Option<String>,
+    },
+
     /// Show a diagnostic map of templates matching a symptom or keyword
     Map {
         /// Search query (symptom, keyword, or tag — e.g. "segfault", "type mismatch", "phi")
@@ -875,6 +901,16 @@ fn main() {
             let input_map: HashMap<String, String> = inputs.into_iter().collect();
             commands::workflow::run(&workflow_id, &input_map, &format)
         }
+        Commands::QuickScan { file, template } => {
+            commands::quick_scan::run(&file, template.as_deref())
+        }
+        Commands::Fix {
+            file,
+            template_id,
+            dry_run,
+            interactive,
+            template,
+        } => commands::fix::run(&file, &template_id, dry_run, interactive, template.as_deref()),
     };
 
     std::process::exit(exit_code);

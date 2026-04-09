@@ -24,6 +24,7 @@ info:
     - lowerer-bug
   cwe: CWE-835
   created: "2025-03-28"
+  updated: "2026-04-06"
 
 scope:
   file_type: llvm-ir
@@ -40,6 +41,13 @@ match:
       pattern: '^if_then\w*:'
       after: for_body
       within_lines: 30
+
+    # Suppress: if the if_then block contains a ret, it's an early return, not a dropped break
+    - id: no_ret_in_block
+      pattern: '^\s*ret '
+      after: if_then_in_loop
+      within_lines: 5
+      step_type: absent
 
     - id: branch_to_merge_not_exit
       pattern: '^\s*br label %if_merge'

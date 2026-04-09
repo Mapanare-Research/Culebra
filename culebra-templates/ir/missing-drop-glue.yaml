@@ -1,0 +1,60 @@
+id: ir-missing-drop-glue
+info:
+  name: Struct-returning function with no free/release calls
+  severity: high
+  author: juandenis
+  description: |
+    A function that returns a struct (via sret or direct aggregate return)
+    allocates temporaries but contains no calls to free, __mn_free,
+    __mn_string_free, or __mn_list_free. This suggests drop glue was
+    skipped — likely due to the skip_struct_ret bailout that disables
+    ALL cleanup for struct-returning functions to avoid use-after-free
+    on the return value.
+  impact: |
+    Every temporary string, list, or map allocated inside the function
+    leaks. In hot loops this exhausts memory quickly. Mapanare's
+    skip_struct_ret disabled drop glue for ~283 sret functions.
+  tags: [ir, memory-leak, drop-glue, sret, skip-struct-ret]
+  cwe: CWE-401
+  created: "2026-04-08"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  sequence:
+    - id: sret_function
+      pattern: 'define\s+void\s+@\w+\(ptr\s+sret\('
+      capture: {}
+
+    - id: has_alloc
+      pattern: 'call\s+.*@(?:__mn_alloc|__mn_string_new|__mn_string_concat|__mn_list_new|__mn_map_new|malloc)'
+      after: sret_function
+      within_lines: 500
+
+    - id: no_free
+      pattern: 'call\s+void\s+@(?:__mn_free|__mn_string_free|__mn_list_free|__mn_map_free|free)\('
+      after: sret_function
+      within_lines: 500
+      step_type: absent
+
+  condition: all
+
+report:
+  format: |
+    sret function allocates memory but never frees anything.
+    Drop glue may have been skipped by skip_struct_ret.
+    Temporaries allocated inside this function will leak.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Implement return-value escape analysis: track which SSA values
+    escape via the sret pointer, and emit drop glue for all others.
+    Remove the skip_struct_ret bailout.
+  difficulty: hard
+
+related:
+  - sret-zeroinitializer-return
+  - sret-input-output-alias

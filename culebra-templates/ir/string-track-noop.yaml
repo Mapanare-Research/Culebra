@@ -1,0 +1,49 @@
+id: string-track-noop
+info:
+  name: String-producing function without drop tracking allocas
+  severity: high
+  author: juandenis
+  description: |
+    A function calls string-producing runtime functions (__mn_str_concat,
+    __mn_str_from_int, __mn_str_from_float, __mn_str_substr) but has
+    zero str.track allocas in its entry block. This means _track_string
+    is disabled or broken — every heap string produced by these calls
+    will leak.
+  impact: |
+    Memory leak: every string concatenation, interpolation, or conversion
+    allocates heap memory that is never freed. Over time this exhausts
+    available memory, especially in loops.
+  tags:
+    - ir
+    - memory
+    - string
+    - leak
+  cwe: CWE-401
+  created: "2026-04-07"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: string_producing_call
+      pattern:
+        - 'call.*@__mn_str_concat'
+        - 'call.*@__mn_str_from_int'
+        - 'call.*@__mn_str_from_float'
+        - 'call.*@__mn_str_from_bool'
+        - 'call.*@__mn_str_substr'
+  condition: or
+
+report:
+  format: |
+    Function calls string-producing runtime functions but may lack
+    str.track allocas for drop glue. Verify that _track_string is
+    enabled in the emitter and that str.track.N allocas appear in
+    the entry block of functions that produce heap strings.
+
+remediation:
+  suggestion: "Ensure _track_string is not a no-op in emit_llvm_mir.py"
+  difficulty: simple

@@ -1,0 +1,51 @@
+id: syscall-in-hot-path
+info:
+  name: Syscall (write/open) in static hot-path function
+  severity: medium
+  author: juandenis
+  description: |
+    A static (non-exported) C function calls write() or open(). If this
+    function is called from exported __mn_* runtime functions on every
+    mutation (e.g., list push/pop/set), the syscall overhead dominates
+    the operation cost. This pattern was found in mn_list_has_magic()
+    which probed memory with write(2) to /dev/null on every list mutation.
+  impact: |
+    Each syscall costs ~1-10 microseconds (kernel context switch).
+    On a tight loop with 100k list pushes, this adds 100ms-1s of
+    pure overhead. Replacing with a struct flag check is O(1) with
+    no kernel transition.
+  tags:
+    - c
+    - performance
+    - syscall
+    - hot-path
+  cwe: CWE-400
+  created: "2026-04-07"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: write_in_static
+      pattern:
+        - 'static.*\bwrite\s*\('
+        - 'static.*\bopen\s*\('
+    - type: regex
+      name: write_call_near_devnull
+      pattern:
+        - 'devnull.*write\s*\('
+        - 'write\s*\(.*devnull'
+  condition: or
+
+report:
+  format: |
+    Found write() or open() syscall in a static function. If this function
+    is called on every list/map/string mutation, the syscall overhead is
+    a performance anti-pattern. Replace with a struct field check.
+
+remediation:
+  suggestion: "Replace syscall probe with a managed flag on the data structure"
+  difficulty: moderate

@@ -1,0 +1,58 @@
+id: c-free-without-lock
+info:
+  name: free() on shared data without surrounding lock
+  severity: critical
+  author: juandenis
+  description: |
+    A free() call operates on data reachable from a shared structure
+    without holding the protecting mutex. In Mapanare's signal runtime,
+    __mn_signal_free frees subscriber and dependency arrays while other
+    threads may be iterating them during propagation.
+  impact: |
+    Use-after-free or double-free under concurrent access. The freed
+    array may be read by a propagation thread mid-iteration, causing
+    segfault or memory corruption. TSan will flag the race but the
+    crash may be intermittent and hard to reproduce.
+  tags: [c, concurrency, mutex, free, thread-safety, use-after-free]
+  cwe: CWE-416
+  created: "2026-04-08"
+
+scope:
+  file_type: c-source
+  section: functions
+
+match:
+  sequence:
+    - id: signal_or_shared_fn
+      pattern: '(?:signal_free|signal_destroy|signal_cleanup|agent_destroy|registry_destroy)\s*\('
+      capture: {}
+
+    - id: free_call
+      pattern: '\bfree\s*\('
+      after: signal_or_shared_fn
+      within_lines: 20
+
+    - id: no_lock
+      pattern: 'pthread_mutex_lock|mtx_lock|mutex_lock|EnterCriticalSection'
+      after: signal_or_shared_fn
+      within_lines: 20
+      step_type: absent
+
+  condition: all
+
+report:
+  format: |
+    free() called inside a shared-data cleanup function without
+    acquiring a lock first. This is a race condition if other threads
+    can access the freed data concurrently.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Acquire the protecting mutex before freeing shared arrays.
+    Pattern: lock → nullify pointers → free → unlock.
+    This ensures no reader sees a dangling pointer.
+  difficulty: moderate
+
+related:
+  - c-non-atomic-shared-global

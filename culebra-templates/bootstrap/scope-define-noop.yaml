@@ -1,0 +1,46 @@
+id: scope-define-noop
+info:
+  name: scope_define returns empty scope (push commented out)
+  severity: critical
+  author: juandenis
+  description: |
+    The self-hosted compiler's scope_define function should push a symbol
+    into the scope's symbol list and return a scope containing that symbol.
+    When the push call is commented out or absent, the function returns a
+    new empty scope, silently discarding every symbol binding. This means
+    the semantic checker tracks no variable definitions — every variable
+    lookup fails, producing either silent UB or incorrect codegen.
+  impact: |
+    Every let binding, function parameter, and enum variant is silently
+    lost. The semantic checker reports no errors (it just finds nothing)
+    and the lowerer uses unresolved names. The stage2 binary compiles
+    but produces wrong output or crashes at runtime.
+  tags:
+    - bootstrap
+    - semantic
+    - scope
+    - silent-failure
+  cwe: CWE-561
+  created: "2026-04-07"
+
+scope:
+  file_type: llvm-ir
+  section: functions
+
+match:
+  matchers:
+    - type: regex
+      name: scope_define_missing_push
+      pattern:
+        - 'define.*@.*scope_define'
+  condition: or
+
+report:
+  format: |
+    Found scope_define function. Verify that it calls __mn_list_push to
+    append the symbol to the scope's symbol list. If push is absent, all
+    symbol bindings are silently discarded.
+
+remediation:
+  suggestion: "Ensure scope_define calls list.push(sym) and returns a Scope with the updated symbols list"
+  difficulty: simple

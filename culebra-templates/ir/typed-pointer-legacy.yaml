@@ -1,0 +1,45 @@
+id: ir-typed-pointer-legacy
+info:
+  name: Legacy typed pointer in opaque-pointer IR
+  severity: medium
+  author: juandenis
+  description: |
+    LLVM's opaque pointer migration (LLVM 15+) replaced typed pointers
+    like i64*, i8*, void ()* with a single ptr type. The self-hosted
+    compiler still emits a few legacy typed pointers, which newer
+    LLVM versions reject.
+  impact: |
+    llvm-as and clang on LLVM 17+ will reject IR containing typed
+    pointers. The IR must use opaque ptr everywhere.
+  tags: [ir, typed-pointer, opaque-ptr, llvm-compat, legacy]
+  created: "2026-04-08"
+
+scope:
+  file_type: llvm-ir
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      pattern:
+        - '\bi\d+\*'
+        - '\bfloat\*'
+        - '\bdouble\*'
+        - '\bvoid\s*\([^)]*\)\*'
+        - '\{[^}]+\}\*'
+  condition: or
+
+report:
+  format: |
+    Legacy typed pointer found. Replace with opaque ptr for LLVM 15+
+    compatibility.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Replace all typed pointers with ptr. For example:
+    i64* → ptr, i8* → ptr, void ()* → ptr, {i64, ptr}* → ptr
+  difficulty: trivial
+
+related:
+  - ret-type-mismatch

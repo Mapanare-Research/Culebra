@@ -1,0 +1,51 @@
+id: c-non-atomic-shared-global
+info:
+  name: Non-atomic shared global variable
+  severity: high
+  author: juandenis
+  description: |
+    A global variable used across threads is declared as plain int64_t
+    (or similar) instead of _Atomic int64_t. Concurrent reads/writes
+    produce data races. In Mapanare's runtime, mn_alloc_count,
+    mn_alloc_bytes, mn_alloc_live, mn_alloc_peak, cow_shares,
+    cow_fallbacks, and cow_detaches are all racy under concurrent agents.
+  impact: |
+    TSan will flag these. Under high contention the counters produce
+    wrong values, and on weakly-ordered architectures (ARM) the
+    compiler may reorder or tear the writes.
+  tags: [c, concurrency, atomic, thread-safety, race-condition]
+  cwe: CWE-362
+  created: "2026-04-08"
+
+scope:
+  file_type: c-source
+  section: all
+
+match:
+  matchers:
+    - type: regex
+      pattern:
+        - '^\s*(?:static\s+)?(?:volatile\s+)?int64_t\s+(?:mn_alloc_|cow_|mn_free_)\w+'
+        - '^\s*(?:static\s+)?(?:volatile\s+)?int64_t\s+\w+_count\s*[=;]'
+        - '^\s*(?:static\s+)?(?:volatile\s+)?int64_t\s+\w+_bytes\s*[=;]'
+  condition: or
+
+report:
+  format: |
+    Global counter should be _Atomic int64_t for thread safety.
+    Plain int64_t is a data race under concurrent allocation/deallocation.
+  evidence: true
+
+remediation:
+  suggestion: |
+    Change declaration to _Atomic int64_t and use memory_order_relaxed
+    for increment/decrement operations (counters don't need sequential
+    consistency, just atomicity).
+  autofix:
+    type: line_replace
+    match: '(static\s+)int64_t\s+(mn_alloc_|cow_|mn_free_)'
+    replace: '$1_Atomic int64_t $2'
+  difficulty: trivial
+
+related:
+  - c-free-without-lock
