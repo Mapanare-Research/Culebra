@@ -23,15 +23,16 @@ scope:
   section: functions
 
 match:
-  sequence:
+  type: sequence
+  steps:
     - id: nonvoid_fn
       pattern: 'define\s+(?!void\b)\S+.*@\w+'
-      absent: false
+
     - id: ret_void
       pattern: '^\s*ret void'
       after: nonvoid_fn
       within_lines: 5000
-  condition: and
+  condition: all
 
 report:
   format: |

@@ -24,7 +24,8 @@ report:
   format: |
     insertvalue operand and field disagree in type. The inserted value is a
     composite type being placed into a field that expects a different type.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

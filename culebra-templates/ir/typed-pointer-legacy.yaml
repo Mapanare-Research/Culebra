@@ -33,7 +33,8 @@ report:
   format: |
     Legacy typed pointer found. Replace with opaque ptr for LLVM 15+
     compatibility.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

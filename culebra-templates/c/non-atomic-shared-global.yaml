@@ -34,7 +34,8 @@ report:
   format: |
     Global counter should be _Atomic int64_t for thread safety.
     Plain int64_t is a data race under concurrent allocation/deallocation.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

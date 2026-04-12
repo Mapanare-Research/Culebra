@@ -24,7 +24,8 @@ report:
   format: |
     PHI node uses i64 but references a value that may resolve to a
     different type. This will cause llvm-as to reject the IR.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

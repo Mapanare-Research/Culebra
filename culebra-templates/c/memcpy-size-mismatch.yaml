@@ -23,7 +23,8 @@ report:
   format: |
     memcpy size mismatch: source and destination types have different sizes.
     The C emitter likely assigned int64_t to a variable that holds a larger struct.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

@@ -22,7 +22,8 @@ scope:
   section: functions
 
 match:
-  sequence:
+  type: sequence
+  steps:
     - id: signal_or_shared_fn
       pattern: '(?:signal_free|signal_destroy|signal_cleanup|agent_destroy|registry_destroy)\s*\('
       capture: {}
@@ -45,7 +46,8 @@ report:
     free() called inside a shared-data cleanup function without
     acquiring a lock first. This is a race condition if other threads
     can access the freed data concurrently.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |

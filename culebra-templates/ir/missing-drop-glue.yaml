@@ -23,7 +23,8 @@ scope:
   section: functions
 
 match:
-  sequence:
+  type: sequence
+  steps:
     - id: sret_function
       pattern: 'define\s+void\s+@\w+\(ptr\s+sret\('
       capture: {}
@@ -46,7 +47,8 @@ report:
     sret function allocates memory but never frees anything.
     Drop glue may have been skipped by skip_struct_ret.
     Temporaries allocated inside this function will leak.
-  evidence: true
+  evidence:
+    show_line: true
 
 remediation:
   suggestion: |
